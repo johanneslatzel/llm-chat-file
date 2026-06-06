@@ -1,0 +1,22 @@
+site_name: llm-chat-file
+site_url: https://johanneslatzel.github.io/llm-chat-file/
+repo_url: https://github.com/johanneslatzel/llm-chat-file
+nav:
+  - Overview: index.md
+  - Quick Start: quickstart.md
+  - Architecture: architecture.md
+  - Environment Variables: env.md
+  - API Reference: api-reference.md
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - search

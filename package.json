@@ -1,0 +1,88 @@
+{
+    "name": "@johannes.latzel/llm-chat-file",
+    "version": "0.1.0",
+    "description": "Filesystem tools for the llm-chat package",
+    "license": "MIT",
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
+    ],
+    "author": "Johannes B. Latzel",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/johanneslatzel/llm-chat-file.git"
+    },
+    "bugs": {
+        "url": "https://github.com/johanneslatzel/llm-chat-file/issues"
+    },
+    "homepage": "https://github.com/johanneslatzel/llm-chat-file#readme",
+    "keywords": [
+        "llm",
+        "chat",
+        "fs",
+        "filesystem",
+        "file",
+        "tool",
+        "folder",
+        "read",
+        "write"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
+        "lint": "eslint . --max-warnings 0",
+        "format": "prettier --write src",
+        "test": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "src/**/*.ts": [
+            "prettier --write",
+            "eslint --max-warnings 0 --no-warn-ignored",
+            "vitest related --run"
+        ],
+        "src/**": [
+            "git add docs/"
+        ]
+    },
+    "dependencies": {
+        "@johannes.latzel/llm-chat": "^0.3.1",
+        "async-mutex": "^0.5.0",
+        "isbinaryfile": "^6.0.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.24.0",
+        "@types/node": "^22.14.1",
+        "@types/uuid": "^10.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.60.0",
+        "@typescript-eslint/parser": "^8.60.0",
+        "@vitest/coverage-v8": "^4.1.8",
+        "concurrently": "^9.1.2",
+        "eslint": "^9.24.0",
+        "eslint-config-prettier": "^10.1.2",
+        "eslint-plugin-n": "^17.17.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.5.1",
+        "prettier": "^3.5.3",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    }
+}
