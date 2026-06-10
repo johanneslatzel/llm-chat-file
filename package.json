@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-file",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Filesystem tools for the llm-chat package",
     "license": "MIT",
     "files": [
@@ -58,24 +58,19 @@
             "prettier --write",
             "eslint --max-warnings 0 --no-warn-ignored",
             "vitest related --run"
-        ],
-        "src/**": [
-            "git add docs/"
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.3.1",
+        "@johannes.latzel/llm-chat": "^0.4.1",
         "async-mutex": "^0.5.0",
         "isbinaryfile": "^6.0.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.24.0",
         "@types/node": "^22.14.1",
-        "@types/uuid": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^8.60.0",
         "@typescript-eslint/parser": "^8.60.0",
         "@vitest/coverage-v8": "^4.1.8",
-        "concurrently": "^9.1.2",
         "eslint": "^9.24.0",
         "eslint-config-prettier": "^10.1.2",
         "eslint-plugin-n": "^17.17.0",

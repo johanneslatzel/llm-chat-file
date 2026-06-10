@@ -9,7 +9,7 @@
 [![CI](https://github.com/johanneslatzel/llm-chat-file/actions/workflows/ci.yml/badge.svg)](https://github.com/johanneslatzel/llm-chat-file/actions/workflows/ci.yml)
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)
 
-llm-chat tools for filesystem operations.
+Filesystem tools for the llm-chat package 
 
 ## Prerequisites
 
