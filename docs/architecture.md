@@ -72,6 +72,18 @@ The `Workspace.walk()` method is an async generator that recursively walks a dir
 
 `switchWorkspace()` uses `async-mutex` to prevent concurrent switches from interleaving. However, this mutex does **not** serialize against regular filesystem tool calls. See [`problems.md`](https://github.com/johanneslatzel/llm-chat-file/blob/main/problems.md) for details.
 
+### Read-before-write safety
+
+The `FilePool` class enforces read-before-write safety: write/edit tools reject the operation if the file has never been read, or if it changed via mtime since the last tracked read.
+
+1. `FilePool` uses `async-mutex` (`Mutex`) for thread safety, following the same pattern as `switchWorkspace`
+2. `recordRead(resolved)` stores `Date.now()` as the read timestamp
+3. `verifyWrite(resolved)` calls `fsp.stat(resolved)` and compares `st.mtime.getTime() > lastRead` — the filesystem mtime is the authoritative source for detecting external modifications
+4. `recordWrite(resolved)` stores `Date.now()` (uses clock time rather than `fstat` — the tool just wrote the file, so avoiding the syscall is fine)
+5. Edit tool internal reads (reading the file to apply a partial edit) do NOT count as a tracked read — only an explicit `read_file` tool call satisfies the requirement
+6. `WriteFileTool` calls `verifyWrite(resolved, true)` — `allowNew` skips the check for ENOENT so creating brand-new files works without a prior read
+7. The feature is enabled by default; set `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE=false` or pass `requireReadBeforeWrite: false` to `FileConfiguration` to disable
+
 ## Dependencies
 
 - `@johannes.latzel/llm-chat` — framework providing `Tool`, `ToolParameters`, `ToolParameterProperty`, etc.

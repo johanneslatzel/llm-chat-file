@@ -354,6 +354,56 @@ describe('Workspace', () => {
 
 });
 
+describe('Workspace.walk', () => {
+    it('returns no entries for unreadable path', async () => {
+        await withTempDir(async (dir) => {
+            const ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Write, path: dir }]));
+            const outside = path.resolve(dir, '..', 'outside');
+            const entries: Array<{ filePath: string; dirent: import('node:fs').Dirent }> = [];
+            for await (const entry of ws.walk(outside)) {
+                entries.push(entry);
+            }
+            expect(entries).toHaveLength(0);
+        });
+    });
+
+    it('yields file entries and skips symlinks', async () => {
+        await withTempDir(async (dir) => {
+            const allowed = path.join(dir, 'allowed');
+            mkdirSync(allowed, { recursive: true });
+            writeFileSync(path.join(allowed, 'file.txt'), 'hello');
+            symlinkSync('/nonexistent', path.join(allowed, 'broken-link'));
+
+            const ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Read, path: allowed }]));
+            const entries: Array<{ filePath: string; dirent: import('node:fs').Dirent }> = [];
+            for await (const entry of ws.walk(allowed)) {
+                entries.push(entry);
+            }
+            expect(entries).toHaveLength(1);
+            expect(entries[0]!.dirent.isFile()).toBe(true);
+            expect(entries[0]!.filePath).toContain('file.txt');
+        });
+    });
+
+    it('yields directory entries and recurses', async () => {
+        await withTempDir(async (dir) => {
+            const allowed = path.join(dir, 'allowed');
+            mkdirSync(allowed, { recursive: true });
+            mkdirSync(path.join(allowed, 'subdir'), { recursive: true });
+            writeFileSync(path.join(allowed, 'subdir', 'nested.txt'), 'data');
+
+            const ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Read, path: allowed }]));
+            const entries: Array<{ filePath: string; dirent: import('node:fs').Dirent }> = [];
+            for await (const entry of ws.walk(allowed)) {
+                entries.push(entry);
+            }
+            const filePaths = entries.map((e) => e.filePath);
+            expect(filePaths).toContain(path.join(allowed, 'subdir'));
+            expect(filePaths).toContain(path.join(allowed, 'subdir', 'nested.txt'));
+        });
+    });
+});
+
 describe('Workspace — resolveSymlinks', () => {
     it('when false, follows symlinks to outside paths (default behavior)', async () => {
         await withTempDir(async (dir) => {

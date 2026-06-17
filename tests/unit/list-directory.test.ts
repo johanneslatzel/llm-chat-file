@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import { mkdirSync } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -43,7 +43,7 @@ describe('ListDirectoryTool', () => {
 
     it('lists directory contents', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('file1.txt');
         expect(result.result).toContain('file2.txt');
@@ -52,7 +52,7 @@ describe('ListDirectoryTool', () => {
 
     it('lists recursively', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('file1.txt');
         expect(result.result).toContain('subdir/file3.txt');
@@ -60,19 +60,19 @@ describe('ListDirectoryTool', () => {
 
     it('reports missing path', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('reports path not found', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: 'nonexistent' });
+        const [result] = await tool.execute({ path: 'nonexistent' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('reports error for path outside workspace', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '../outside' });
+        const [result] = await tool.execute({ path: '../outside' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid or inaccessible path');
     });
@@ -95,7 +95,7 @@ describe('ListDirectoryTool - edge cases', () => {
     it('reports error when path is a file', async () => {
         createTempFile(tmpDir, 'afile.txt', 'x');
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: 'afile.txt' });
+        const [result] = await tool.execute({ path: 'afile.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('not a directory');
     });
@@ -103,7 +103,7 @@ describe('ListDirectoryTool - edge cases', () => {
     it('lists an empty directory', async () => {
         mkdirSync(path.join(tmpDir, 'emptydir'));
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: 'emptydir' });
+        const [result] = await tool.execute({ path: 'emptydir' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('empty directory');
     });
@@ -125,7 +125,7 @@ describe('ListDirectoryTool - no config', () => {
 
     it('lists with default config using absolute path', async () => {
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: tmpDir });
+        const [result] = await tool.execute({ path: tmpDir }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
     });
 });
@@ -147,7 +147,7 @@ describe('filesystem — ListDirectoryTool catch', () => {
     it('handles stat failure in list directory', async () => {
         vi.mocked(fsp.stat).mockRejectedValueOnce(new Error('stat failed'));
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('stat failed');
     });
@@ -155,7 +155,7 @@ describe('filesystem — ListDirectoryTool catch', () => {
     it('handles readdir failure in non-recursive list', async () => {
         vi.mocked(fsp.readdir).mockRejectedValueOnce(new Error('readdir error'));
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Error listing directory');
     });
@@ -181,7 +181,7 @@ describe('ListDirectoryTool — thresholds (non-recursive)', () => {
         }
         const sc = new SearchConfiguration(50, 2, 20);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toBe('Found 5 files and 0 directories');
     });
@@ -192,7 +192,7 @@ describe('ListDirectoryTool — thresholds (non-recursive)', () => {
         }
         const sc = new SearchConfiguration(50, 10, 4);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('too many entries');
     });
@@ -203,7 +203,7 @@ describe('ListDirectoryTool — thresholds (non-recursive)', () => {
         }
         const sc = new SearchConfiguration(50, 10, 20);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('file0.txt');
         expect(result.result).toContain('file1.txt');
@@ -236,7 +236,7 @@ describe('ListDirectoryTool — skipDirs in flat mode', () => {
             '.git/config': '',
         });
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('README.md');
         expect(result.result).not.toContain('node_modules');
@@ -250,7 +250,7 @@ describe('ListDirectoryTool — skipDirs in flat mode', () => {
             'node_modules/pkg/index.js': '',
         });
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.' });
+        const [result] = await tool.execute({ path: '.' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('README.md');
         expect(result.result).toContain('node_modules/');
@@ -268,7 +268,7 @@ describe('ListDirectoryTool — skipDirs in flat mode', () => {
             'node_modules/pkg/index.js': '',
         });
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('README.md');
         expect(result.result).not.toContain('node_modules');
@@ -296,7 +296,7 @@ describe('ListDirectoryTool — thresholds (recursive)', () => {
         createTempDirStructure(tmpDir, { 'sub/a.txt': 'x', 'sub/b.txt': 'x' });
         const sc = new SearchConfiguration(50, 3, 20);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Found');
         expect(result.result).toContain('files');
@@ -309,7 +309,7 @@ describe('ListDirectoryTool — thresholds (recursive)', () => {
         }
         const sc = new SearchConfiguration(50, 10, 3);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('too many entries');
     });
@@ -320,7 +320,7 @@ describe('ListDirectoryTool — thresholds (recursive)', () => {
         }
         const sc = new SearchConfiguration(50, 10, 20);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('f0.txt');
         expect(result.result).toContain('f1.txt');
@@ -351,7 +351,7 @@ describe('ListDirectoryTool — walk errors', () => {
             .mockImplementationOnce(realReaddir)
             .mockRejectedValueOnce(new Error('permission denied'));
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Warning');
         expect(result.result).toContain('could not read');
@@ -364,7 +364,7 @@ describe('ListDirectoryTool — walk errors', () => {
             'sub/f.txt': 'data',
         });
         const tool = new ListDirectoryTool(ws);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).not.toContain('Warning');
         expect(result.result).toContain('good.txt');
@@ -384,7 +384,7 @@ describe('ListDirectoryTool — walk errors', () => {
         });
         const sc = new SearchConfiguration(50, 10, 5);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Warning');
         expect(result.result).toContain('could not read');
@@ -404,10 +404,57 @@ describe('ListDirectoryTool — walk errors', () => {
         });
         const sc = new SearchConfiguration(50, 3, 20);
         const tool = new ListDirectoryTool(ws, sc);
-        const result = await tool.execute({ path: '.', recursive: true });
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Warning');
         expect(result.result).toContain('could not read');
+        expect(result.result).toContain('files');
+        expect(result.result).toContain('directories');
+    });
+
+    it('shows plural walk error warning when maxTotalEntries reached with multiple unreadable subdirs', async () => {
+        const walkMock = vi.spyOn(ws, 'walk');
+        const subDir1 = path.join(tmpDir, 'sub1');
+        const subDir2 = path.join(tmpDir, 'sub2');
+        walkMock.mockImplementation(async function* (dir: string, onError?: (p: string, e: Error) => void) {
+            yield { filePath: path.join(tmpDir, 'f.txt'), dirent: { isDirectory: () => false, isFile: () => true, name: 'f.txt' } as any };
+            yield { filePath: subDir1, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub1' } as any };
+            onError?.(subDir1, new Error('err1'));
+            yield { filePath: subDir2, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub2' } as any };
+            onError?.(subDir2, new Error('err2'));
+            for (let i = 0; i < 3; i++) {
+                yield { filePath: path.join(tmpDir, `f${i}.txt`), dirent: { isDirectory: () => false, isFile: () => true, name: `f${i}.txt` } as any };
+            }
+        });
+        const sc = new SearchConfiguration(50, 10, 5);
+        const tool = new ListDirectoryTool(ws, sc);
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('Warning');
+        expect(result.result).toContain('could not read 2 directories');
+        expect(result.result).toContain('too many entries');
+    });
+
+    it('shows plural walk error warning in count summary when display limit exceeded', async () => {
+        const walkMock = vi.spyOn(ws, 'walk');
+        const subDir1 = path.join(tmpDir, 'sub1');
+        const subDir2 = path.join(tmpDir, 'sub2');
+        walkMock.mockImplementation(async function* (dir: string, onError?: (p: string, e: Error) => void) {
+            yield { filePath: path.join(tmpDir, 'f.txt'), dirent: { isDirectory: () => false, isFile: () => true, name: 'f.txt' } as any };
+            yield { filePath: subDir1, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub1' } as any };
+            onError?.(subDir1, new Error('err1'));
+            yield { filePath: subDir2, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub2' } as any };
+            onError?.(subDir2, new Error('err2'));
+            for (let i = 0; i < 3; i++) {
+                yield { filePath: path.join(tmpDir, `f${i}.txt`), dirent: { isDirectory: () => false, isFile: () => true, name: `f${i}.txt` } as any };
+            }
+        });
+        const sc = new SearchConfiguration(50, 3, 20);
+        const tool = new ListDirectoryTool(ws, sc);
+        const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('Warning');
+        expect(result.result).toContain('could not read 2 directories');
         expect(result.result).toContain('files');
         expect(result.result).toContain('directories');
     });

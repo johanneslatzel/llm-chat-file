@@ -27,3 +27,4 @@ All variables are optional. Constructor parameters take precedence over environm
 |----------|---------|-------------|
 | `LLM_CHAT_FS_MAX_CHARS_PER_FILE` | `10000` | Maximum characters read from or written to a file |
 | `LLM_CHAT_FS_MAX_FILE_SIZE` | `10485760` (10 MB) | Maximum raw file size in bytes for read operations |
+| `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE` | `true` | Require `read_file` before write/edit tools. Set to `"false"` to disable. |

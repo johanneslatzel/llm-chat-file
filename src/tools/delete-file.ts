@@ -1,5 +1,7 @@
 import {
     PartialToolResult,
+    PropertyType,
+    ResultBuilder,
     ResultStatus,
     Tool,
     ToolParameterProperty,
@@ -18,29 +20,44 @@ export class DeleteFileTool extends Tool {
     constructor(workspace: Workspace) {
         super(
             'delete_file',
-            'Deletes a file or empty directory. Use recursive=true to delete non-empty directories and their contents.',
+            'Deletes files or empty directories. Use recursive=true to delete non-empty directories and their contents. Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
-                    path: new ToolParameterProperty('File or directory path'),
+                    paths: new ToolParameterProperty(
+                        'Array of file or directory paths to delete',
+                        PropertyType.Array
+                    ),
                     recursive: new ToolParameterProperty(
                         'Delete directories and their contents recursively'
                     )
                 },
-                ['path']
+                ['paths']
             )
         );
         this.ws = workspace;
     }
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const raw = args.path;
+        const rawPaths = args.paths;
+        if (!Array.isArray(rawPaths)) {
+            return { result: '"paths" must be an array of strings', status: ResultStatus.Error };
+        }
+        if (rawPaths.length === 0) {
+            return { result: '"paths" must be a non-empty array', status: ResultStatus.Error };
+        }
+
+        const recursive = args.recursive === true;
+        return await ResultBuilder.resolveAll(rawPaths.map((p) => this.deleteSingle(p, recursive)));
+    }
+
+    private async deleteSingle(raw: unknown, recursive: boolean): Promise<PartialToolResult> {
         if (typeof raw !== 'string' || !raw.trim()) {
-            return { result: 'Invalid or inaccessible path', status: ResultStatus.Error };
+            return { result: 'Path must be a non-empty string', status: ResultStatus.Error };
         }
         const resolved = this.ws.normalize(raw.trim());
         if (!this.ws.canWrite(resolved)) {
             return {
-                result: 'Invalid or inaccessible path (must be within writable directory)',
+                result: `Invalid or inaccessible path (must be within writable directory)${this.ws.pathHint(raw, resolved)}`,
                 status: ResultStatus.Error
             };
         }
@@ -53,8 +70,6 @@ export class DeleteFileTool extends Tool {
         }
 
         const label = stat.isDirectory() ? 'directory' : 'file';
-        const recursive = args.recursive === true;
-
         try {
             if (stat.isDirectory() && !recursive) {
                 await fsp.rmdir(resolved);

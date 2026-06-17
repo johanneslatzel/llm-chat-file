@@ -8,6 +8,7 @@
 [![codecov](https://codecov.io/gh/johanneslatzel/llm-chat-file/graph/badge.svg)](https://codecov.io/gh/johanneslatzel/llm-chat-file)
 [![CI](https://github.com/johanneslatzel/llm-chat-file/actions/workflows/ci.yml/badge.svg)](https://github.com/johanneslatzel/llm-chat-file/actions/workflows/ci.yml)
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)
+[![AI Assisted Yes](https://img.shields.io/badge/AI%20Assisted-Yes-green)](https://github.com/mefengl/made-by-ai)
 
 Filesystem tools for the llm-chat package 
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import type { Stats } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -55,7 +55,7 @@ describe('EntryInfoTool', () => {
         await fsp.writeFile(path.join(tmpDir, 'test.txt'), 'hello');
 
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test.txt' });
+        const [result] = await tool.execute({ paths: ['test.txt'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: file');
         expect(result.result).toContain('Size:');
@@ -66,7 +66,7 @@ describe('EntryInfoTool', () => {
         await fsp.mkdir(path.join(tmpDir, 'subdir'), { recursive: true });
 
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'subdir' });
+        const [result] = await tool.execute({ paths: ['subdir'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: directory');
     });
@@ -76,7 +76,7 @@ describe('EntryInfoTool', () => {
         await fsp.symlink('target.txt', path.join(tmpDir, 'link.txt'));
 
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'link.txt' });
+        const [result] = await tool.execute({ paths: ['link.txt'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: symlink');
         expect(result.result).toContain('Symlink target: target.txt');
@@ -85,33 +85,33 @@ describe('EntryInfoTool', () => {
     it('reports missing path', async () => {
         vi.mocked(fsp.lstat).mockRejectedValueOnce(new Error('ENOENT'));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'nonexistent' });
+        const [result] = await tool.execute({ paths: ['nonexistent'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Path not found');
     });
 
     it('rejects path outside workspace', async () => {
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: '/etc/outside' });
+        const [result] = await tool.execute({ paths: ['/etc/outside'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('rejects empty path', async () => {
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: '' });
+        const [result] = await tool.execute({ paths: [''] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('rejects whitespace-only path', async () => {
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: '   ' });
+        const [result] = await tool.execute({ paths: ['   '] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('detects FIFO entry type', async () => {
         vi.mocked(fsp.lstat).mockResolvedValue(makeStats({ isFIFO: () => true }));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: FIFO');
     });
@@ -119,7 +119,7 @@ describe('EntryInfoTool', () => {
     it('detects socket entry type', async () => {
         vi.mocked(fsp.lstat).mockResolvedValue(makeStats({ isSocket: () => true }));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: socket');
     });
@@ -129,7 +129,7 @@ describe('EntryInfoTool', () => {
             makeStats({ isCharacterDevice: () => true })
         );
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: character device');
     });
@@ -137,7 +137,7 @@ describe('EntryInfoTool', () => {
     it('detects block device entry type', async () => {
         vi.mocked(fsp.lstat).mockResolvedValue(makeStats({ isBlockDevice: () => true }));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: block device');
     });
@@ -145,7 +145,7 @@ describe('EntryInfoTool', () => {
     it('detects unknown entry type', async () => {
         vi.mocked(fsp.lstat).mockResolvedValue(makeStats({}));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: unknown');
     });
@@ -155,7 +155,7 @@ describe('EntryInfoTool', () => {
             makeStats({ mode: 0o777, isFile: () => true })
         );
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.result).toContain('Permissions: rwxrwxrwx');
     });
 
@@ -164,8 +164,58 @@ describe('EntryInfoTool', () => {
             makeStats({ mode: 0o000, isFile: () => true })
         );
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.result).toContain('Permissions: ---------');
+    });
+});
+
+describe('EntryInfoTool - batching', () => {
+    let tmpDir: string;
+    let ws: Workspace;
+
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        tmpDir = createTempDir();
+        ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Write, path: tmpDir }]));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        removeTempDir(tmpDir);
+    });
+
+    it('returns metadata for multiple paths', async () => {
+        await fsp.writeFile(path.join(tmpDir, 'a.txt'), 'a');
+        await fsp.writeFile(path.join(tmpDir, 'b.txt'), 'b');
+        const tool = new EntryInfoTool(ws);
+        const results = await tool.execute({ paths: ['a.txt', 'b.txt'] }) as ToolResult[];
+        expect(results).toHaveLength(2);
+        expect(results[0].status).toBe(ResultStatus.Success);
+        expect(results[1].status).toBe(ResultStatus.Success);
+    });
+
+    it('rejects non-array paths', async () => {
+        const tool = new EntryInfoTool(ws);
+        const [result] = await tool.execute({ paths: 'not-array' }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('must be an array');
+    });
+
+    it('rejects empty paths array', async () => {
+        const tool = new EntryInfoTool(ws);
+        const [result] = await tool.execute({ paths: [] }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('non-empty');
+    });
+
+    it('partially fails when one path is invalid', async () => {
+        await fsp.writeFile(path.join(tmpDir, 'exists.txt'), 'data');
+        const tool = new EntryInfoTool(ws);
+        const results = await tool.execute({ paths: ['exists.txt', '/etc/outside', '/nonexistent-absolute'] }) as ToolResult[];
+        expect(results).toHaveLength(3);
+        expect(results[0].status).toBe(ResultStatus.Success);
+        expect(results[1].status).toBe(ResultStatus.Error);
+        expect(results[2].status).toBe(ResultStatus.Error);
     });
 });
 
@@ -186,7 +236,7 @@ describe('EntryInfoTool - error handling', () => {
     it('handles lstat failure', async () => {
         vi.mocked(fsp.lstat).mockRejectedValueOnce(new Error('lstat failed'));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test.txt' });
+        const [result] = await tool.execute({ paths: ['test.txt'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('lstat failed');
     });
@@ -196,7 +246,7 @@ describe('EntryInfoTool - error handling', () => {
         vi.mocked(fsp.lstat).mockResolvedValue(stats);
         vi.mocked(fsp.readlink).mockRejectedValueOnce(new Error('permission denied'));
         const tool = new EntryInfoTool(ws);
-        const result = await tool.execute({ path: 'test' });
+        const [result] = await tool.execute({ paths: ['test'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: symlink');
         expect(result.result).toContain('Symlink target: (unreadable)');

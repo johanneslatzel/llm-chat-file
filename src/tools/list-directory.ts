@@ -24,10 +24,12 @@ export class ListDirectoryTool extends Tool {
     constructor(workspace: Workspace, config?: SearchConfiguration) {
         super(
             'list_directory',
-            'Lists files and directories in a path. Returns one entry per line; directories are suffixed with "/".',
+            'Lists files and directories in a path. Returns one entry per line; directories are suffixed with "/". Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
-                    path: new ToolParameterProperty('Directory path'),
+                    path: new ToolParameterProperty(
+                        'Directory path (absolute, or relative to workspace root)'
+                    ),
                     recursive: new ToolParameterProperty(
                         'Set to true to list recursively depth-first',
                         PropertyType.Boolean
@@ -47,7 +49,10 @@ export class ListDirectoryTool extends Tool {
         }
         const resolved = this.ws.normalize(raw.trim());
         if (!this.ws.canRead(resolved)) {
-            return { result: 'Invalid or inaccessible path', status: ResultStatus.Error };
+            return {
+                result: `Invalid or inaccessible path${this.ws.pathHint(raw.trim(), resolved)}`,
+                status: ResultStatus.Error
+            };
         }
 
         let stat: Stats;

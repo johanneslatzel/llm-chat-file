@@ -125,6 +125,21 @@ export class Workspace {
         return this.cfg.skipDirs;
     }
 
+    /**
+     * Returns a diagnostic hint when a path fails access checks due to
+     * possible confusion between workspace root and filesystem root.
+     *
+     * @param raw      - The raw user-supplied path string.
+     * @param resolved - The resolved absolute path.
+     * @returns A hint string (empty if no hint applies).
+     */
+    pathHint(raw: string, resolved: string): string {
+        if (raw.startsWith('/') && !this.canRead(resolved)) {
+            return ' (Tip: paths starting with "/" resolve to filesystem root; use "." or a relative path for workspace root)';
+        }
+        return '';
+    }
+
     /** Whether symlink resolution is enabled for access checks. */
     get resolveSymlinks(): boolean {
         return this.cfg.resolveSymlinks;

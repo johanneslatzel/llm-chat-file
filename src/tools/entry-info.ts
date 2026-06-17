@@ -1,5 +1,7 @@
 import {
     PartialToolResult,
+    PropertyType,
+    ResultBuilder,
     ResultStatus,
     Tool,
     ToolParameterProperty,
@@ -60,32 +62,52 @@ function entryType(stats: Stats): EntryType {
     return EntryType.Unknown;
 }
 
-/** Tool that returns metadata about a filesystem entry (file, directory, symlink, etc.). */
+/** Tool that returns metadata about one or more filesystem entries. */
 export class EntryInfoTool extends Tool {
     private ws: Workspace;
 
+    /**
+     * @param workspace - The workspace for path resolution and access checks.
+     */
     constructor(workspace: Workspace) {
         super(
             'entry_info',
-            'Returns metadata about a filesystem entry (file, directory, symlink, etc.) including its type, size, timestamps, permissions, and symlink target if applicable.',
+            'Returns metadata about one or more filesystem entries (files, directories, symlinks, etc.) including type, size, timestamps, permissions, and symlink target if applicable. Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
-                    path: new ToolParameterProperty('File system path')
+                    paths: new ToolParameterProperty(
+                        'Array of paths to get info for (absolute, or relative to workspace root)',
+                        PropertyType.Array
+                    )
                 },
-                ['path']
+                ['paths']
             )
         );
         this.ws = workspace;
     }
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const raw = args.path;
+        const rawPaths = args.paths;
+        if (!Array.isArray(rawPaths)) {
+            return { result: '"paths" must be an array of strings', status: ResultStatus.Error };
+        }
+        if (rawPaths.length === 0) {
+            return { result: '"paths" must be a non-empty array', status: ResultStatus.Error };
+        }
+
+        return await ResultBuilder.resolveAll(rawPaths.map((p) => this.infoSingle(p)));
+    }
+
+    private async infoSingle(raw: unknown): Promise<PartialToolResult> {
         if (typeof raw !== 'string' || !raw.trim()) {
-            return { result: 'Invalid or inaccessible path', status: ResultStatus.Error };
+            return { result: 'Path must be a non-empty string', status: ResultStatus.Error };
         }
         const resolved = this.ws.normalize(raw.trim());
         if (!this.ws.canRead(resolved)) {
-            return { result: 'Invalid or inaccessible path', status: ResultStatus.Error };
+            return {
+                result: `Invalid or inaccessible path${this.ws.pathHint(raw, resolved)}`,
+                status: ResultStatus.Error
+            };
         }
 
         let stats: Stats;

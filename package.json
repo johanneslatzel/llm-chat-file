@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-file",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "description": "Filesystem tools for the llm-chat package",
     "license": "MIT",
     "files": [
@@ -50,6 +50,8 @@
         "format": "prettier --write src",
         "test": "vitest",
         "test:coverage": "vitest run --coverage",
+        "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
+        "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
         "prepare": "husky"
     },
@@ -61,7 +63,7 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.4.1",
+        "@johannes.latzel/llm-chat": "^0.5.0",
         "async-mutex": "^0.5.0",
         "isbinaryfile": "^6.0.0"
     },

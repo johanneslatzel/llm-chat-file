@@ -19,11 +19,15 @@ export class MoveFileTool extends Tool {
     constructor(workspace: Workspace) {
         super(
             'move_file',
-            'Moves or renames a file or directory.',
+            'Moves or renames a file or directory. Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
-                    source: new ToolParameterProperty('Source path'),
-                    destination: new ToolParameterProperty('Destination path')
+                    source: new ToolParameterProperty(
+                        'Source path (absolute, or relative to workspace root)'
+                    ),
+                    destination: new ToolParameterProperty(
+                        'Destination path (absolute, or relative to workspace root)'
+                    )
                 },
                 ['source', 'destination']
             )
@@ -42,7 +46,7 @@ export class MoveFileTool extends Tool {
         const src = this.ws.normalize(srcRaw.trim());
         if (!this.ws.canWrite(src)) {
             return {
-                result: 'Invalid or inaccessible source path (must be within writable directory)',
+                result: `Invalid or inaccessible source path (must be within writable directory)${this.ws.pathHint(srcRaw.trim(), src)}`,
                 status: ResultStatus.Error
             };
         }
@@ -57,7 +61,7 @@ export class MoveFileTool extends Tool {
         const dest = this.ws.normalize(destRaw.trim());
         if (!this.ws.canWrite(dest)) {
             return {
-                result: 'Invalid or inaccessible destination path (must be within writable directory)',
+                result: `Invalid or inaccessible destination path (must be within writable directory)${this.ws.pathHint(destRaw.trim(), dest)}`,
                 status: ResultStatus.Error
             };
         }

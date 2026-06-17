@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import * as fsp from 'node:fs/promises';
 import { SearchEntriesTool } from '../../src/index.js';
@@ -42,7 +42,7 @@ describe('SearchEntriesTool — content search', () => {
             'c.txt': 'nothing'
         });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'hello' });
+        const [result] = await tool.execute({ content_pattern: 'hello' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('hello');
         expect(result.result).not.toContain('goodbye');
@@ -51,21 +51,21 @@ describe('SearchEntriesTool — content search', () => {
     it('is case-insensitive by default', async () => {
         createTempFile(tmpDir, 'file.txt', 'Hello World');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'hello' });
+        const [result] = await tool.execute({ content_pattern: 'hello' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Hello World');
     });
 
     it('returns error for invalid regex', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: '[invalid' });
+        const [result] = await tool.execute({ content_pattern: '[invalid' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid content_pattern regex');
     });
 
     it('returns error for inaccessible path', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'test', path: '/etc/something' });
+        const [result] = await tool.execute({ content_pattern: 'test', path: '/etc/something' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid or inaccessible path');
     });
@@ -78,9 +78,22 @@ describe('SearchEntriesTool — content search', () => {
             'd.txt': 'match'
         });
         const tool = new SearchEntriesTool(ws, new SearchConfiguration(2));
-        const result = await tool.execute({ content_pattern: 'match' });
+        const [result] = await tool.execute({ content_pattern: 'match' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result!.split('\n').length).toBeLessThanOrEqual(2);
+    });
+
+    it('uses max_results from execute args when provided', async () => {
+        createTempDirStructure(tmpDir, {
+            'a.txt': 'match',
+            'b.txt': 'match',
+            'c.txt': 'match',
+        });
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ content_pattern: 'match', max_results: 2 }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        const lines = result.result!.split('\n');
+        expect(lines.length).toBe(2);
     });
 
     it('returns summary when too many entries visited', async () => {
@@ -88,7 +101,7 @@ describe('SearchEntriesTool — content search', () => {
         for (let i = 0; i < 5; i++) files[`f${i}.txt`] = 'match';
         createTempDirStructure(tmpDir, files);
         const tool = new SearchEntriesTool(ws, new SearchConfiguration(50, 3));
-        const result = await tool.execute({ content_pattern: 'match' });
+        const [result] = await tool.execute({ content_pattern: 'match' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toMatch(/Searched \d+ entries, found \d+ matches/);
     });
@@ -98,7 +111,7 @@ describe('SearchEntriesTool — content search', () => {
         for (let i = 0; i < 20; i++) files[`f${i}.txt`] = 'match';
         createTempDirStructure(tmpDir, files);
         const tool = new SearchEntriesTool(ws, new SearchConfiguration(50, 200, 5));
-        const result = await tool.execute({ content_pattern: 'match' });
+        const [result] = await tool.execute({ content_pattern: 'match' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Searched too many entries');
     });
@@ -106,7 +119,7 @@ describe('SearchEntriesTool — content search', () => {
     it('returns "No matching entries found" when no matches', async () => {
         createTempFile(tmpDir, 'file.txt', 'hello');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'nonexistent' });
+        const [result] = await tool.execute({ content_pattern: 'nonexistent' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toBe('No matching entries found');
     });
@@ -114,7 +127,7 @@ describe('SearchEntriesTool — content search', () => {
     it('skips binary files', async () => {
         createTempFile(tmpDir, 'binary.bin', '\x00\x01\x02Hello');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'Hello' });
+        const [result] = await tool.execute({ content_pattern: 'Hello' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toBe('No matching entries found');
     });
@@ -124,7 +137,7 @@ describe('SearchEntriesTool — content search', () => {
         createTempFile(tmpDir, 'outside.txt', 'match');
         createTempFile(tmpDir, 'sub/inside.txt', 'match');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'match', path: 'sub' });
+        const [result] = await tool.execute({ content_pattern: 'match', path: 'sub' }) as [ToolResult];
         expect(result.result).toContain('inside.txt');
         expect(result.result).not.toContain('outside.txt');
     });
@@ -150,7 +163,7 @@ describe('SearchEntriesTool — name search', () => {
             'other.js': ''
         });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: '\\.txt$' });
+        const [result] = await tool.execute({ name_pattern: '\\.txt$' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('hello.txt');
         expect(result.result).toContain('world.txt');
@@ -160,14 +173,14 @@ describe('SearchEntriesTool — name search', () => {
     it('is case-insensitive by default', async () => {
         createTempFile(tmpDir, 'HELLO.TXT', '');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'hello' });
+        const [result] = await tool.execute({ name_pattern: 'hello' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('HELLO.TXT');
     });
 
     it('returns error for invalid regex', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: '[invalid' });
+        const [result] = await tool.execute({ name_pattern: '[invalid' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid name_pattern regex');
     });
@@ -177,7 +190,7 @@ describe('SearchEntriesTool — name search', () => {
         createTempFile(tmpDir, 'data.txt', '');
         createTempFile(tmpDir, 'sub/data.txt', '');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'data', path: 'sub' });
+        const [result] = await tool.execute({ name_pattern: 'data', path: 'sub' }) as [ToolResult];
         expect(result.result).toContain('data.txt');
         expect(result.result).not.toContain(tmpDir + '/data.txt');
     });
@@ -190,7 +203,7 @@ describe('SearchEntriesTool — name search', () => {
         mkdirSync(path.join(tmpDir, 'node_modules'), { recursive: true });
         createTempFile(tmpDir, 'node_modules/pkg/index.js', '');
         const tool = new SearchEntriesTool(ws2);
-        const result = await tool.execute({ name_pattern: 'index' });
+        const [result] = await tool.execute({ name_pattern: 'index' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toBe('No matching entries found');
     });
@@ -214,7 +227,7 @@ describe('SearchEntriesTool — directory search', () => {
         mkdirSync(path.join(tmpDir, 'test'), { recursive: true });
         mkdirSync(path.join(tmpDir, 'lib'), { recursive: true });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'src|test', type: 'directory' });
+        const [result] = await tool.execute({ name_pattern: 'src|test', type: 'directory' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('src/');
         expect(result.result).toContain('test/');
@@ -224,8 +237,32 @@ describe('SearchEntriesTool — directory search', () => {
     it('appends trailing slash to directory results', async () => {
         mkdirSync(path.join(tmpDir, 'mydir'), { recursive: true });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'mydir', type: 'directory' });
+        const [result] = await tool.execute({ name_pattern: 'mydir', type: 'directory' }) as [ToolResult];
         expect(result.result).toMatch(/mydir\//);
+    });
+});
+
+describe('SearchEntriesTool — symlinks', () => {
+    let tmpDir: string;
+    let ws: Workspace;
+
+    beforeEach(() => {
+        tmpDir = createTempDir();
+        ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Write, path: tmpDir }]));
+    });
+
+    afterEach(() => {
+        removeTempDir(tmpDir);
+    });
+
+    it('skips symlinks in search results', async () => {
+        createTempFile(tmpDir, 'real.txt', 'data');
+        symlinkSync('/nonexistent', path.join(tmpDir, 'broken-link'));
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({}) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('real.txt');
+        expect(result.result).not.toContain('broken-link');
     });
 });
 
@@ -248,7 +285,7 @@ describe('SearchEntriesTool — merged behavior', () => {
             'b.txt': 'world'
         });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('a.txt');
         expect(result.result).toContain('b.txt');
@@ -259,7 +296,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         createTempFile(tmpDir, 'src/index.txt', 'data');
         createTempFile(tmpDir, 'readme.txt', 'data');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'data', type: 'file' });
+        const [result] = await tool.execute({ content_pattern: 'data', type: 'file' }) as [ToolResult];
         expect(result.result).toContain('readme.txt');
         expect(result.result).toContain('index.txt');
         const lines = result.result!.split('\n');
@@ -271,7 +308,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
         createTempFile(tmpDir, 'readme.txt', 'data');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'src|readme', type: 'directory' });
+        const [result] = await tool.execute({ name_pattern: 'src|readme', type: 'directory' }) as [ToolResult];
         expect(result.result).toContain('src/');
         expect(result.result).not.toContain('readme.txt');
     });
@@ -280,7 +317,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         mkdirSync(path.join(tmpDir, 'data'), { recursive: true });
         createTempFile(tmpDir, 'readme.txt', '');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'data|readme' });
+        const [result] = await tool.execute({ name_pattern: 'data|readme' }) as [ToolResult];
         expect(result.result).toContain('data/');
         expect(result.result).toContain('readme.txt');
     });
@@ -290,7 +327,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         createTempFile(tmpDir, 'match.js', 'secret content');
         createTempFile(tmpDir, 'other.txt', 'secret content');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: '\\.txt$', content_pattern: 'secret' });
+        const [result] = await tool.execute({ name_pattern: '\\.txt$', content_pattern: 'secret' }) as [ToolResult];
         expect(result.result).toContain('match.txt');
         expect(result.result).not.toContain('match.js');
         expect(result.result).toContain('other.txt');
@@ -300,7 +337,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         createTempFile(tmpDir, 'small.txt', 'tiny');
         createTempFile(tmpDir, 'large.txt', 'x'.repeat(1000));
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: '.', max_size: 100 });
+        const [result] = await tool.execute({ content_pattern: '.', max_size: 100 }) as [ToolResult];
         expect(result.result).toContain('small.txt');
         expect(result.result).not.toContain('large.txt');
     });
@@ -312,7 +349,7 @@ describe('SearchEntriesTool — merged behavior', () => {
             undefined,
             new FileConfiguration(10000, 500)
         );
-        const result = await tool.execute({ content_pattern: 'hello', max_size: 99999 });
+        const [result] = await tool.execute({ content_pattern: 'hello', max_size: 99999 }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('f.txt');
     });
@@ -324,7 +361,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         }
         createTempDirStructure(tmpDir, files);
         const tool = new SearchEntriesTool(ws, new SearchConfiguration(50, 200, 5000, 0));
-        const result = await tool.execute({ content_pattern: 'data' });
+        const [result] = await tool.execute({ content_pattern: 'data' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('timed out');
     });
@@ -332,7 +369,7 @@ describe('SearchEntriesTool — merged behavior', () => {
     it('returns line-level content matches', async () => {
         createTempFile(tmpDir, 'code.ts', 'line1\nTODO: fix this\nline3\nTODO: another');
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'TODO' });
+        const [result] = await tool.execute({ content_pattern: 'TODO' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         const lines = result.result!.split('\n');
         expect(lines.length).toBe(2);
@@ -342,7 +379,7 @@ describe('SearchEntriesTool — merged behavior', () => {
 
     it('rejects invalid type value', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ name_pattern: 'test', type: 'invalid' });
+        const [result] = await tool.execute({ name_pattern: 'test', type: 'invalid' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid type parameter');
     });
@@ -350,7 +387,7 @@ describe('SearchEntriesTool — merged behavior', () => {
     it('stops scanning lines within a file when maxResults reached', async () => {
         createTempFile(tmpDir, 'f.txt', 'match\nmatch\nmatch\nmatch');
         const tool = new SearchEntriesTool(ws, new SearchConfiguration(2));
-        const result = await tool.execute({ content_pattern: 'match' });
+        const [result] = await tool.execute({ content_pattern: 'match' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         const lines = result.result!.split('\n');
         expect(lines.length).toBe(2);
@@ -360,7 +397,7 @@ describe('SearchEntriesTool — merged behavior', () => {
         createTempFile(tmpDir, 'f.txt', 'hello');
         const past = new Date(Date.now() - 86400000).toISOString();
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ content_pattern: 'hello', created_after: past });
+        const [result] = await tool.execute({ content_pattern: 'hello', created_after: past }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toMatch(/\(created: .+modified: .+\)/);
     });
@@ -382,28 +419,28 @@ describe('SearchEntriesTool — timestamp invalid dates', () => {
 
     it('reports invalid created_after date', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_after: 'not-a-date' });
+        const [result] = await tool.execute({ created_after: 'not-a-date' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('created_after');
     });
 
     it('reports invalid created_before date', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_before: 'bad-date' });
+        const [result] = await tool.execute({ created_before: 'bad-date' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('created_before');
     });
 
     it('reports invalid modified_after date', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ modified_after: 'bad-date' });
+        const [result] = await tool.execute({ modified_after: 'bad-date' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('modified_after');
     });
 
     it('reports invalid modified_before date', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ modified_before: 'bad-date' });
+        const [result] = await tool.execute({ modified_before: 'bad-date' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('modified_before');
     });
@@ -427,28 +464,28 @@ describe('SearchEntriesTool — timestamp filtering', () => {
 
     it('filters with created_after future date — no results', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_after: '2099-01-01T00:00:00.000Z' });
+        const [result] = await tool.execute({ created_after: '2099-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
     it('filters with created_before past date — no results', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_before: '2020-01-01T00:00:00.000Z' });
+        const [result] = await tool.execute({ created_before: '2020-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
     it('filters with modified_after future date — no results', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ modified_after: '2099-01-01T00:00:00.000Z' });
+        const [result] = await tool.execute({ modified_after: '2099-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
     it('filters with modified_before past date — no results', async () => {
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ modified_before: '2020-01-01T00:00:00.000Z' });
+        const [result] = await tool.execute({ modified_before: '2020-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
@@ -457,7 +494,7 @@ describe('SearchEntriesTool — timestamp filtering', () => {
         const now = new Date();
         const past = new Date(now.getTime() - 86400000).toISOString();
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_after: past });
+        const [result] = await tool.execute({ created_after: past }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toMatch(/\(created: .+modified: .+\)/);
     });
@@ -486,7 +523,7 @@ describe('SearchEntriesTool — timestamp error handling', () => {
             return fallbackStat(p);
         });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({ created_after: '2020-01-01T00:00:00.000Z' });
+        const [result] = await tool.execute({ created_after: '2020-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('keep.txt');
     });
@@ -496,7 +533,7 @@ describe('SearchEntriesTool — timestamp error handling', () => {
             { name: 'bad', isDirectory: () => { throw new Error('walk error'); }, isFile: () => false } as any
         ]);
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Error searching');
     });
@@ -526,7 +563,7 @@ describe('SearchEntriesTool — walk error callback', () => {
             .mockImplementationOnce(realReaddir)
             .mockRejectedValueOnce(new Error('permission denied'));
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Warning');
         expect(result.result).toContain('could not read');
@@ -539,7 +576,7 @@ describe('SearchEntriesTool — walk error callback', () => {
             'sub/f.txt': 'data',
         });
         const tool = new SearchEntriesTool(ws);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).not.toContain('Warning');
         expect(result.result).toContain('good.txt');
@@ -558,10 +595,28 @@ describe('SearchEntriesTool — walk error callback', () => {
         });
         const sc = new SearchConfiguration(50, 2, 5000);
         const tool = new SearchEntriesTool(ws, sc);
-        const result = await tool.execute({});
+        const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Warning');
         expect(result.result).toContain('could not read');
         expect(result.result).toContain('Searched');
+    });
+
+    it('reports plural walk error warning when multiple subdirectories unreadable', async () => {
+        createTempDirStructure(tmpDir, {
+            'good.txt': 'data',
+            'sub1/f.txt': 'data',
+            'sub2/g.txt': 'data',
+        });
+        const realReaddir = vi.mocked(fsp.readdir).getMockImplementation()!;
+        vi.mocked(fsp.readdir)
+            .mockImplementationOnce(realReaddir)
+            .mockRejectedValueOnce(new Error('err1'))
+            .mockRejectedValueOnce(new Error('err2'));
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({}) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('Warning');
+        expect(result.result).toContain('could not read 2 directories');
     });
 });

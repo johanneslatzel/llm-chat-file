@@ -1,5 +1,7 @@
 import {
     PartialToolResult,
+    PropertyType,
+    ResultBuilder,
     ResultStatus,
     Tool,
     ToolParameterProperty,
@@ -18,26 +20,40 @@ export class CreateFolderTool extends Tool {
     constructor(workspace: Workspace) {
         super(
             'create_folder',
-            'Creates a directory and any necessary parent directories.',
+            'Creates directories and any necessary parent directories. Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
-                    path: new ToolParameterProperty('Directory path')
+                    paths: new ToolParameterProperty(
+                        'Array of directory paths to create',
+                        PropertyType.Array
+                    )
                 },
-                ['path']
+                ['paths']
             )
         );
         this.ws = workspace;
     }
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const raw = args.path;
+        const rawPaths = args.paths;
+        if (!Array.isArray(rawPaths)) {
+            return { result: '"paths" must be an array of strings', status: ResultStatus.Error };
+        }
+        if (rawPaths.length === 0) {
+            return { result: '"paths" must be a non-empty array', status: ResultStatus.Error };
+        }
+
+        return await ResultBuilder.resolveAll(rawPaths.map((p) => this.createSingle(p)));
+    }
+
+    private async createSingle(raw: unknown): Promise<PartialToolResult> {
         if (typeof raw !== 'string' || !raw.trim()) {
-            return { result: 'Invalid or inaccessible path', status: ResultStatus.Error };
+            return { result: 'Path must be a non-empty string', status: ResultStatus.Error };
         }
         const resolved = this.ws.normalize(raw.trim());
         if (!this.ws.canWrite(resolved)) {
             return {
-                result: 'Invalid or inaccessible path (must be within writable directory)',
+                result: `Invalid or inaccessible path (must be within writable directory)${this.ws.pathHint(raw, resolved)}`,
                 status: ResultStatus.Error
             };
         }

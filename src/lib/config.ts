@@ -150,14 +150,24 @@ export class FileConfiguration {
     maxFileSize: number;
 
     /**
+     * When `true`, write/edit tools require the file to have been read via `read_file`
+     * before modifications are allowed. Falls back to the `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE`
+     * environment variable, or `false` if not set.
+     */
+    requireReadBeforeWrite: boolean;
+
+    /**
      * @param maxCharsPerFile - Maximum chars. Defaults to env `LLM_CHAT_FS_MAX_CHARS_PER_FILE` or `10000`.
      * @param maxFileSize - Maximum file size in bytes. Defaults to env `LLM_CHAT_FS_MAX_FILE_SIZE` or `10485760` (10 MB).
+     * @param requireReadBeforeWrite - Require read before write. Defaults to env `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE` or `true`.
      */
-    constructor(maxCharsPerFile?: number, maxFileSize?: number) {
+    constructor(maxCharsPerFile?: number, maxFileSize?: number, requireReadBeforeWrite?: boolean) {
         this.maxCharsPerFile =
             maxCharsPerFile ?? parseEnvInt('LLM_CHAT_FS_MAX_CHARS_PER_FILE', 10000);
         this.maxFileSize =
             maxFileSize ?? parseEnvInt('LLM_CHAT_FS_MAX_FILE_SIZE', 10 * 1024 * 1024);
+        this.requireReadBeforeWrite =
+            requireReadBeforeWrite ?? parseEnvBool('LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE', true);
     }
 }
 

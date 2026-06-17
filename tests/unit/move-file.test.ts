@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MoveFileTool } from '../../src/index.js';
@@ -38,41 +38,41 @@ describe('MoveFileTool', () => {
     it('moves a file', async () => {
         createTempFile(tmpDir, 'source.txt', 'content');
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'source.txt', destination: 'dest.txt' });
+        const [result] = await tool.execute({ source: 'source.txt', destination: 'dest.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Moved');
     });
 
     it('reports missing source', async () => {
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ destination: 'dest.txt' });
+        const [result] = await tool.execute({ destination: 'dest.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('source');
     });
 
     it('reports missing destination', async () => {
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'source.txt' });
+        const [result] = await tool.execute({ source: 'source.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('destination');
     });
 
     it('rejects source outside workspace', async () => {
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: '/etc/passwd', destination: 'out.txt' });
+        const [result] = await tool.execute({ source: '/etc/passwd', destination: 'out.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('reports source not found', async () => {
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'nonexistent.txt', destination: 'dest.txt' });
+        const [result] = await tool.execute({ source: 'nonexistent.txt', destination: 'dest.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('reports error for destination outside workspace', async () => {
         createTempFile(tmpDir, 'src.txt', 'content');
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'src.txt', destination: '../outside.txt' });
+        const [result] = await tool.execute({ source: 'src.txt', destination: '../outside.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('destination');
     });
@@ -95,10 +95,10 @@ describe('MoveFileTool - no config', () => {
 
     it('moves a file with default config using absolute paths', async () => {
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({
+        const [result] = await tool.execute({
             source: path.join(tmpDir, 'move-src.txt'),
             destination: path.join(tmpDir, 'move-dst.txt')
-        });
+        }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Moved');
     });
@@ -122,7 +122,7 @@ describe('filesystem — MoveFileTool source not file/dir', () => {
         const { execSync } = require('node:child_process');
         execSync(`mkfifo "${path.join(tmpDir, 'mypipe')}"`, { stdio: 'ignore' });
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'mypipe', destination: 'dest' });
+        const [result] = await tool.execute({ source: 'mypipe', destination: 'dest' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('not a file or directory');
     });
@@ -146,7 +146,7 @@ describe('filesystem — MoveFileTool catch', () => {
     it('handles rename failure', async () => {
         vi.mocked(fsp.rename).mockRejectedValueOnce(new Error('rename failed'));
         const tool = new MoveFileTool(ws);
-        const result = await tool.execute({ source: 'src.txt', destination: 'dst.txt' });
+        const [result] = await tool.execute({ source: 'src.txt', destination: 'dst.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('rename failed');
     });

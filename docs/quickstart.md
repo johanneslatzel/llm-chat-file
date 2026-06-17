@@ -54,37 +54,21 @@ console.log(result.result);
 
 ## Register with a chat service
 
-Wire all the tools into an `llm-chat` `ChatService`:
+Use `FileToolPackage` to bundle all 13 tools at once, including subfile editing tools (`replace_file_lines`, `insert_file_content`, `replace_file_content`):
 
 ```typescript
 import { ToolSuite } from '@johannes.latzel/llm-chat';
-import {
-    ReadFileTool,
-    WriteFileTool,
-    SearchEntriesTool,
-    ListDirectoryTool,
-    CreateFolderTool,
-    DeleteFileTool,
-    MoveFileTool,
-    EntryInfoTool,
-    SwitchWorkspaceTool,
-    FileAccessInfoTool,
-} from '@johannes.latzel/llm-chat-file';
+import { FileToolPackage, Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-file';
 
+const ws = new Workspace(new DirectoryConfiguration());
+const pkg = new FileToolPackage(ws);
 const suite = new ToolSuite();
-suite.add(new ReadFileTool(ws));
-suite.add(new WriteFileTool(ws));
-suite.add(new SearchEntriesTool(ws));
-suite.add(new ListDirectoryTool(ws));
-suite.add(new CreateFolderTool(ws));
-suite.add(new DeleteFileTool(ws));
-suite.add(new MoveFileTool(ws));
-suite.add(new EntryInfoTool(ws));
-suite.add(new SwitchWorkspaceTool(ws));
-suite.add(new FileAccessInfoTool(ws));
+suite.add(pkg);
 
 // Pass suite.tools() to your ChatService constructor
 ```
+
+Or register individual tools as needed — see the [API Reference](api-reference.md) for all 13.
 
 ## Next steps
 

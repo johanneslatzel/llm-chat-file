@@ -12,3 +12,7 @@ export { MoveFileTool } from './tools/move-file.js';
 export { SwitchWorkspaceTool } from './tools/switch-workspace.js';
 export { FileAccessInfoTool } from './tools/file-access-info.js';
 export { EntryInfoTool } from './tools/entry-info.js';
+export { ReplaceFileLinesTool } from './tools/replace-file-lines.js';
+export { InsertFileContentTool } from './tools/insert-file-content.js';
+export { ReplaceFileContentTool } from './tools/replace-file-content.js';
+export { FileToolPackage } from './packages/tool-package.js';
