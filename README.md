@@ -11,7 +11,14 @@
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-file/latest)
 [![AI Assisted Yes](https://img.shields.io/badge/AI%20Assisted-Yes-green)](https://github.com/mefengl/made-by-ai)
 
-Filesystem tools for the llm-chat package 
+Access-controlled filesystem tools for LLM agents. Works with [`@johannes.latzel/llm-chat`](https://github.com/johanneslatzel/llm-chat).
+
+## Features
+
+- access-controlled read/write access to the filesystem, configurable via workspace permissions
+- tools for reading, writing, editing, listing, searching, and managing files
+- read-before-write policy to prevent accidental overwrites
+- configurable via config objects and env vars
 
 ## Prerequisites
 
