@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-file",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "description": "Filesystem tools for the llm-chat package",
     "license": "MIT",
     "files": [
