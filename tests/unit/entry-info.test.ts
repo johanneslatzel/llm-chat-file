@@ -4,9 +4,7 @@ import type { Stats } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { EntryInfoTool } from '../../src/index.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
-import { DirectoryConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -58,7 +56,7 @@ describe('EntryInfoTool', () => {
         const [result] = await tool.execute({ paths: ['test.txt'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Type: file');
-        expect(result.result).toContain('Size:');
+        expect(result.result).toContain('Size: 5 bytes');
         expect(result.result).toContain('Permissions:');
     });
 

@@ -4,9 +4,8 @@ import { mkdirSync } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { ListDirectoryTool } from '../../src/index.js';
-import { SearchConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { SearchConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile, createTempDirStructure } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -130,7 +129,7 @@ describe('ListDirectoryTool - no config', () => {
     });
 });
 
-describe('filesystem — ListDirectoryTool catch', () => {
+describe('filesystem, ListDirectoryTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -161,7 +160,7 @@ describe('filesystem — ListDirectoryTool catch', () => {
     });
 });
 
-describe('ListDirectoryTool — thresholds (non-recursive)', () => {
+describe('ListDirectoryTool, thresholds (non-recursive)', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -210,7 +209,7 @@ describe('ListDirectoryTool — thresholds (non-recursive)', () => {
     });
 });
 
-describe('ListDirectoryTool — skipDirs in flat mode', () => {
+describe('ListDirectoryTool, skipDirs in flat mode', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -275,7 +274,7 @@ describe('ListDirectoryTool — skipDirs in flat mode', () => {
     });
 });
 
-describe('ListDirectoryTool — thresholds (recursive)', () => {
+describe('ListDirectoryTool, thresholds (recursive)', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -327,7 +326,7 @@ describe('ListDirectoryTool — thresholds (recursive)', () => {
     });
 });
 
-describe('ListDirectoryTool — walk errors', () => {
+describe('ListDirectoryTool, walk errors', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -346,10 +345,12 @@ describe('ListDirectoryTool — walk errors', () => {
             'good.txt': 'data',
             'sub/f.txt': 'data',
         });
-        const realReaddir = vi.mocked(fsp.readdir).getMockImplementation()!;
-        vi.mocked(fsp.readdir)
-            .mockImplementationOnce(realReaddir)
-            .mockRejectedValueOnce(new Error('permission denied'));
+        const subDir = path.join(tmpDir, 'sub');
+        vi.spyOn(ws, 'walk').mockImplementation(async function* (dir: string, onError?: (p: string, e: Error) => void) {
+            yield { filePath: path.join(tmpDir, 'good.txt'), dirent: { isDirectory: () => false, isFile: () => true, name: 'good.txt' } as any };
+            yield { filePath: subDir, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub' } as any };
+            onError?.(subDir, new Error('permission denied'));
+        });
         const tool = new ListDirectoryTool(ws);
         const [result] = await tool.execute({ path: '.', recursive: true }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);

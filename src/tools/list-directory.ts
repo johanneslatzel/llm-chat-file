@@ -10,7 +10,7 @@ import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Stats } from 'node:fs';
 import { SearchConfiguration } from '../lib/config.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /** Tool that lists files and directories in a given path within the workspace. */
 export class ListDirectoryTool extends Tool {

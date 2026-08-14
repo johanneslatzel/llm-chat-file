@@ -8,7 +8,7 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /** Tool that creates directories within the allowed workspace directories. */
 export class CreateFolderTool extends Tool {

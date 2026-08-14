@@ -7,7 +7,7 @@ import {
 } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /** Tool that moves or renames files and directories within the allowed workspace directories. */
 export class MoveFileTool extends Tool {

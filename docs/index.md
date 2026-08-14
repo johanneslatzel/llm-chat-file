@@ -1,11 +1,13 @@
 # Overview
 
-Filesystem tools for the `llm-chat` ecosystem. This package gives LLM-powered agents safe, scoped access to read and write files, list directories, search by name or content, and manage workspaces — all within a configurable access-control boundary.
+Filesystem tools for the `@johannes.latzel/llm-chat` ecosystem. This package gives LLM-powered agents safe, scoped access to read and write files, list directories, search by name or content, and manage workspaces, all within a configurable access-control boundary.
 
-- [Quick Start](quickstart.md) — get up and running in 5 minutes
-- [Architecture](architecture.md) — how the `Workspace` gatekeeper works
-- [Environment Variables](env.md) — configuration reference
-- [API Reference](api-reference.md) — full tool documentation with parameter tables
+## Navigation
+
+- [Quick Start](quickstart.md): install and run the first tool
+- [Architecture](architecture.md): how the `Workspace` gatekeeper works
+- [Environment Variables](env.md): configuration reference
+- [API Reference](api-reference.md): full tool documentation with parameter tables
 
 ## Common patterns
 
@@ -15,4 +17,8 @@ All path parameters accept relative or absolute filesystem paths. Relative paths
 
 ### Access control
 
-Each tool enforces either read or write access on resolved paths via the `Workspace` class. See [Architecture](architecture.md) for details.
+Each tool enforces either read or write access on resolved paths via the `Workspace` class, shared from [`@johannes.latzel/llm-chat-workspace`](https://github.com/johanneslatzel/llm-chat-workspace). See [Architecture](architecture.md) for details.
+
+## License
+
+MIT. See [`LICENSE`](https://github.com/johanneslatzel/llm-chat-file/blob/main/LICENSE).

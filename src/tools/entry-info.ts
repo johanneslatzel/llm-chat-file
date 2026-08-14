@@ -10,7 +10,7 @@ import {
 import * as fsp from 'node:fs/promises';
 import * as fs from 'node:fs';
 import type { Stats } from 'node:fs';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /**
  * Categorises the type of a filesystem entry based on `fs.Stats`.

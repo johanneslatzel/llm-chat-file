@@ -2,15 +2,10 @@
 
 All variables are optional. Constructor parameters take precedence over environment variables.
 
-## Access control
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LLM_CHAT_FS_READ_DIRS` | — | Comma-separated directories with read-only access |
-| `LLM_CHAT_FS_WRITE_DIRS` | — | Comma-separated directories with read-write access |
-| `LLM_CHAT_FS_WORKSPACE` | `process.cwd()` | Default workspace directory (auto-added as writable) |
-| `LLM_CHAT_FS_SKIP_DIRS` | — | Comma-separated directory names to skip when walking trees (e.g. `node_modules`, `.git`) |
-| `LLM_CHAT_FS_RESOLVE_SYMLINKS` | `false` | Set to `"true"` to resolve symlinks before access checks |
+Workspace access control (`Workspace` / `DirectoryConfiguration`) is provided by
+[`@johannes.latzel/llm-chat-workspace`](https://github.com/johanneslatzel/llm-chat-workspace),
+see its [documentation](https://johanneslatzel.github.io/llm-chat-workspace/) for the native
+`LLM_CHAT_WORKSPACE_*` variables.
 
 ## Search limits
 
@@ -25,6 +20,6 @@ All variables are optional. Constructor parameters take precedence over environm
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_CHAT_FS_MAX_CHARS_PER_FILE` | `10000` | Maximum characters read from or written to a file |
+| `LLM_CHAT_FS_MAX_CHARS_PER_FILE` | `100000` | Maximum characters read from or written to a file |
 | `LLM_CHAT_FS_MAX_FILE_SIZE` | `10485760` (10 MB) | Maximum raw file size in bytes for read operations |
 | `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE` | `true` | Require `read_file` before write/edit tools. Set to `"false"` to disable. |

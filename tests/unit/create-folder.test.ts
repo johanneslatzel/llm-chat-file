@@ -3,9 +3,7 @@ import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { CreateFolderTool } from '../../src/index.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
-import { DirectoryConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -120,7 +118,7 @@ describe('CreateFolderTool - no config', () => {
     });
 });
 
-describe('filesystem — CreateFolderTool catch', () => {
+describe('filesystem, CreateFolderTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
 

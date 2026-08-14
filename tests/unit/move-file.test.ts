@@ -3,9 +3,7 @@ import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MoveFileTool } from '../../src/index.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
-import { DirectoryConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -104,7 +102,7 @@ describe('MoveFileTool - no config', () => {
     });
 });
 
-describe('filesystem — MoveFileTool source not file/dir', () => {
+describe('filesystem, MoveFileTool source not file/dir', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -128,7 +126,7 @@ describe('filesystem — MoveFileTool source not file/dir', () => {
     });
 });
 
-describe('filesystem — MoveFileTool catch', () => {
+describe('filesystem, MoveFileTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
 

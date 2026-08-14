@@ -1,9 +1,8 @@
-import type { ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FileToolPackage } from '../../src/index.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
-import { DirectoryConfiguration, FileConfiguration } from '../../src/lib/config.js';
+import { FileConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir } from '../index.js';
 
 describe('FileToolPackage', () => {
@@ -76,7 +75,7 @@ describe('FileToolPackage', () => {
         expect(tutorial).not.toContain('Read before write');
     });
 
-    it('all tools can be called by name from the package', () => {
+    it('all tools can be called by name from the package', async () => {
         const ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Write, path: tmpDir }]));
         const pkg = new FileToolPackage(ws);
         const tools = pkg.tools();
@@ -94,5 +93,15 @@ describe('FileToolPackage', () => {
         expect(toolMap.has('insert_file_content')).toBe(true);
         expect(toolMap.has('replace_file_content')).toBe(true);
         expect(toolMap.has('replace_file_lines')).toBe(true);
+    });
+
+    it('file_access_info reports the configured max chars per file', async () => {
+        const ws = new Workspace(new DirectoryConfiguration([{ type: AccessType.Write, path: tmpDir }]));
+        const pkg = new FileToolPackage(ws, undefined, new FileConfiguration(77));
+        const fileAccess = pkg.tools().find((t) => t.name === 'file_access_info');
+        expect(fileAccess).toBeDefined();
+        const [result] = await fileAccess!.execute({}) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('max chars per file: 77');
     });
 });

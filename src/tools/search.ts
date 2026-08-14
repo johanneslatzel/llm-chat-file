@@ -10,7 +10,7 @@ import * as fsp from 'node:fs/promises';
 import type { Stats } from 'node:fs';
 import { FileConfiguration, SearchConfiguration } from '../lib/config.js';
 import { isBinary } from '../lib/helpers.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 enum SearchType {
     File = 'file',
@@ -77,16 +77,16 @@ export class SearchEntriesTool extends Tool {
                         PropertyType.Integer
                     ),
                     created_after: new ToolParameterProperty(
-                        'ISO date string — files created after this time'
+                        'ISO date string, files created after this time'
                     ),
                     created_before: new ToolParameterProperty(
-                        'ISO date string — files created before this time'
+                        'ISO date string, files created before this time'
                     ),
                     modified_after: new ToolParameterProperty(
-                        'ISO date string — files modified after this time'
+                        'ISO date string, files modified after this time'
                     ),
                     modified_before: new ToolParameterProperty(
-                        'ISO date string — files modified before this time'
+                        'ISO date string, files modified before this time'
                     )
                 },
                 []

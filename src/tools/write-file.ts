@@ -9,7 +9,7 @@ import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /** Tool that writes text content to a file within the allowed workspace directories. */
 export class WriteFileTool extends Tool {
@@ -59,7 +59,7 @@ export class WriteFileTool extends Tool {
         }
         if (content.length > this.fc.maxCharsPerFile) {
             return {
-                result: `Content exceeds max length of ${this.fc.maxCharsPerFile}`,
+                result: `Content argument is ${content.length} chars, exceeds max length of ${this.fc.maxCharsPerFile}`,
                 status: ResultStatus.Error
             };
         }

@@ -3,10 +3,9 @@ import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { WriteFileTool } from '../../src/index.js';
-import { FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
+import { FileConfiguration } from '../../src/lib/config.js';
 import { FilePool } from '../../src/lib/file-pool.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -95,6 +94,7 @@ describe('WriteFileTool - additional branches', () => {
         const [result] = await tool.execute({ path: 'long.txt', content: 'x'.repeat(11) }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('max length');
+        expect(result.result).toMatch(/Content argument is 11 chars, exceeds max length of 10/);
     });
 
 });
@@ -124,7 +124,7 @@ describe('WriteFileTool - no config', () => {
     });
 });
 
-describe('filesystem — WriteFileTool catch', () => {
+describe('filesystem, WriteFileTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
     let fc: FileConfiguration | undefined;
@@ -161,6 +161,19 @@ describe('WriteFileTool - requireReadBeforeWrite', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         removeTempDir(tmpDir);
+    });
+
+    it('allows writing a file again after it was deleted', async () => {
+        const fc = new FileConfiguration(undefined, undefined, true);
+        const fp = new FilePool(fc);
+        const tool = new WriteFileTool(ws, fc, fp);
+        const filePath = tmpDir + '/recreate.txt';
+        const first = await tool.execute({ path: filePath, content: 'first' }) as [ToolResult];
+        expect(first[0].status).toBe(ResultStatus.Success);
+        await fsp.rm(filePath);
+        const second = await tool.execute({ path: filePath, content: 'second' }) as [ToolResult];
+        expect(second[0].status).toBe(ResultStatus.Success);
+        expect(second[0].result).toContain('Written');
     });
 
     it('rejects overwriting existing file without prior read', async () => {

@@ -3,10 +3,9 @@ import { ResultStatus } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { ReplaceFileContentTool } from '../../src/index.js';
-import { FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
+import { FileConfiguration } from '../../src/lib/config.js';
 import { FilePool } from '../../src/lib/file-pool.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -45,6 +44,7 @@ describe('ReplaceFileContentTool', () => {
         });
         expect(result[0].status).toBe(ResultStatus.Success);
         expect(result[0].result).toContain('Replaced');
+        expect(result[0].result).toContain('Replaced 1 occurrence');
         const content = await fsp.readFile(filePath, 'utf-8');
         expect(content).toBe('hello bar world foo');
     });
@@ -58,6 +58,7 @@ describe('ReplaceFileContentTool', () => {
             replace_all: true
         });
         expect(result[0].status).toBe(ResultStatus.Success);
+        expect(result[0].result).toContain('Replaced 2 occurrences');
         const content = await fsp.readFile(filePath, 'utf-8');
         expect(content).toBe('hello bar world bar');
     });
@@ -173,6 +174,7 @@ describe('ReplaceFileContentTool', () => {
         });
         expect(result[0].status).toBe(ResultStatus.Error);
         expect(result[0].result).toContain('max length');
+        expect(result[0].result).toMatch(/Resulting file would be \d+ chars, exceeds max length of 10/);
     });
 
     it('reports error for binary file', async () => {

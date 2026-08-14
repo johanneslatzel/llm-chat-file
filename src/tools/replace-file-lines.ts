@@ -11,7 +11,7 @@ import type { Stats } from 'node:fs';
 import { FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
 import { isBinary } from '../lib/helpers.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /**
  * Tool that replaces a range of lines in an existing text file with new content.
@@ -143,7 +143,7 @@ export class ReplaceFileLinesTool extends Tool {
 
             if (result.length > this.fc.maxCharsPerFile) {
                 return {
-                    result: `Result exceeds max length of ${this.fc.maxCharsPerFile}`,
+                    result: `Resulting file would be ${result.length} chars, exceeds max length of ${this.fc.maxCharsPerFile}`,
                     status: ResultStatus.Error
                 };
             }

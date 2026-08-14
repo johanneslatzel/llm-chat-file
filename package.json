@@ -1,8 +1,9 @@
 {
     "name": "@johannes.latzel/llm-chat-file",
-    "version": "0.2.4",
+    "version": "0.3.0",
     "description": "Filesystem tools for the llm-chat package",
     "license": "MIT",
+    "sideEffects": false,
     "files": [
         "dist/",
         "README.md",
@@ -44,6 +45,7 @@
         "access": "public"
     },
     "scripts": {
+        "prebuild": "rm -rf dist/",
         "build": "tsc -p tsconfig.build.json",
         "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
         "lint": "eslint . --max-warnings 0",
@@ -53,7 +55,9 @@
         "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
         "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
-        "prepare": "husky"
+        "prepare": "husky",
+        "audit": "npm audit --audit-level=high",
+        "prepack": "npm run build"
     },
     "lint-staged": {
         "src/**/*.ts": [
@@ -63,21 +67,22 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.6.0",
+        "@johannes.latzel/llm-chat": "^0.7.0",
+        "@johannes.latzel/llm-chat-workspace": "^0.1.1",
         "async-mutex": "^0.5.0",
         "isbinaryfile": "^6.0.0"
     },
     "devDependencies": {
-        "@eslint/js": "^9.24.0",
-        "@types/node": "^22.14.1",
+        "@eslint/js": "^10.0.1",
+        "@types/node": "^26.2.0",
         "@typescript-eslint/eslint-plugin": "^8.60.0",
         "@typescript-eslint/parser": "^8.60.0",
         "@vitest/coverage-v8": "^4.1.8",
-        "eslint": "^9.24.0",
+        "eslint": "^10.8.1",
         "eslint-config-prettier": "^10.1.2",
-        "eslint-plugin-n": "^17.17.0",
+        "eslint-plugin-n": "^18.3.0",
         "husky": "^9.1.7",
-        "lint-staged": "^15.5.1",
+        "lint-staged": "^17.3.0",
         "prettier": "^3.5.3",
         "typescript": "^6.0.3",
         "vitest": "^4.1.8"

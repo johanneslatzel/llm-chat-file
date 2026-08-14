@@ -4,9 +4,8 @@ import { mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import * as fsp from 'node:fs/promises';
 import { SearchEntriesTool } from '../../src/index.js';
-import { SearchConfiguration, FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { SearchConfiguration, FileConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile, createTempDirStructure } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -22,7 +21,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     };
 });
 
-describe('SearchEntriesTool — content search', () => {
+describe('SearchEntriesTool, content search', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -143,7 +142,7 @@ describe('SearchEntriesTool — content search', () => {
     });
 });
 
-describe('SearchEntriesTool — name search', () => {
+describe('SearchEntriesTool, name search', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -209,7 +208,7 @@ describe('SearchEntriesTool — name search', () => {
     });
 });
 
-describe('SearchEntriesTool — directory search', () => {
+describe('SearchEntriesTool, directory search', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -242,7 +241,7 @@ describe('SearchEntriesTool — directory search', () => {
     });
 });
 
-describe('SearchEntriesTool — symlinks', () => {
+describe('SearchEntriesTool, symlinks', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -266,7 +265,7 @@ describe('SearchEntriesTool — symlinks', () => {
     });
 });
 
-describe('SearchEntriesTool — merged behavior', () => {
+describe('SearchEntriesTool, merged behavior', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -403,7 +402,7 @@ describe('SearchEntriesTool — merged behavior', () => {
     });
 });
 
-describe('SearchEntriesTool — timestamp invalid dates', () => {
+describe('SearchEntriesTool, timestamp invalid dates', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -446,7 +445,7 @@ describe('SearchEntriesTool — timestamp invalid dates', () => {
     });
 });
 
-describe('SearchEntriesTool — timestamp filtering', () => {
+describe('SearchEntriesTool, timestamp filtering', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -462,28 +461,28 @@ describe('SearchEntriesTool — timestamp filtering', () => {
         removeTempDir(tmpDir);
     });
 
-    it('filters with created_after future date — no results', async () => {
+    it('filters with created_after future date, no results', async () => {
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({ created_after: '2099-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
-    it('filters with created_before past date — no results', async () => {
+    it('filters with created_before past date, no results', async () => {
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({ created_before: '2020-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
-    it('filters with modified_after future date — no results', async () => {
+    it('filters with modified_after future date, no results', async () => {
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({ modified_after: '2099-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('No matching');
     });
 
-    it('filters with modified_before past date — no results', async () => {
+    it('filters with modified_before past date, no results', async () => {
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({ modified_before: '2020-01-01T00:00:00.000Z' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
@@ -500,7 +499,7 @@ describe('SearchEntriesTool — timestamp filtering', () => {
     });
 });
 
-describe('SearchEntriesTool — timestamp error handling', () => {
+describe('SearchEntriesTool, timestamp error handling', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -529,9 +528,11 @@ describe('SearchEntriesTool — timestamp error handling', () => {
     });
 
     it('handles walk failure in timestamp search', async () => {
-        vi.mocked(fsp.readdir).mockResolvedValueOnce([
-            { name: 'bad', isDirectory: () => { throw new Error('walk error'); }, isFile: () => false } as any
-        ]);
+        vi.spyOn(ws, 'walk').mockImplementation(async function* () {
+            const fail = true;
+            if (fail) throw new Error('walk error');
+            yield undefined;
+        });
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
@@ -539,7 +540,7 @@ describe('SearchEntriesTool — timestamp error handling', () => {
     });
 });
 
-describe('SearchEntriesTool — walk error callback', () => {
+describe('SearchEntriesTool, walk error callback', () => {
     let tmpDir: string;
     let ws: Workspace;
 
@@ -558,10 +559,12 @@ describe('SearchEntriesTool — walk error callback', () => {
             'good.txt': 'data',
             'sub/f.txt': 'data',
         });
-        const realReaddir = vi.mocked(fsp.readdir).getMockImplementation()!;
-        vi.mocked(fsp.readdir)
-            .mockImplementationOnce(realReaddir)
-            .mockRejectedValueOnce(new Error('permission denied'));
+        const subDir = path.join(tmpDir, 'sub');
+        vi.spyOn(ws, 'walk').mockImplementation(async function* (dir: string, onError?: (p: string, e: Error) => void) {
+            yield { filePath: path.join(tmpDir, 'good.txt'), dirent: { isDirectory: () => false, isFile: () => true, name: 'good.txt' } as any };
+            yield { filePath: subDir, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub' } as any };
+            onError?.(subDir, new Error('permission denied'));
+        });
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
@@ -608,11 +611,15 @@ describe('SearchEntriesTool — walk error callback', () => {
             'sub1/f.txt': 'data',
             'sub2/g.txt': 'data',
         });
-        const realReaddir = vi.mocked(fsp.readdir).getMockImplementation()!;
-        vi.mocked(fsp.readdir)
-            .mockImplementationOnce(realReaddir)
-            .mockRejectedValueOnce(new Error('err1'))
-            .mockRejectedValueOnce(new Error('err2'));
+        const subDir1 = path.join(tmpDir, 'sub1');
+        const subDir2 = path.join(tmpDir, 'sub2');
+        vi.spyOn(ws, 'walk').mockImplementation(async function* (dir: string, onError?: (p: string, e: Error) => void) {
+            yield { filePath: path.join(tmpDir, 'good.txt'), dirent: { isDirectory: () => false, isFile: () => true, name: 'good.txt' } as any };
+            yield { filePath: subDir1, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub1' } as any };
+            onError?.(subDir1, new Error('err1'));
+            yield { filePath: subDir2, dirent: { isDirectory: () => true, isFile: () => false, name: 'sub2' } as any };
+            onError?.(subDir2, new Error('err2'));
+        });
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({}) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);

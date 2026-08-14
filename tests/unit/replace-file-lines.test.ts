@@ -3,10 +3,9 @@ import { ResultStatus } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { ReplaceFileLinesTool } from '../../src/index.js';
-import { FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
+import { FileConfiguration } from '../../src/lib/config.js';
 import { FilePool } from '../../src/lib/file-pool.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -161,6 +160,7 @@ describe('ReplaceFileLinesTool', () => {
         });
         expect(result[0].status).toBe(ResultStatus.Error);
         expect(result[0].result).toContain('max length');
+        expect(result[0].result).toMatch(/Resulting file would be \d+ chars, exceeds max length of 5/);
     });
 
     it('reports error for binary file', async () => {

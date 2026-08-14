@@ -18,33 +18,29 @@ All path parameters accept paths in two forms:
 | Form | Example | Resolution |
 |---|---|---|
 | **Relative** | `"."`, `"src/index.ts"` | Resolved against the current workspace root. Use `"."` for the workspace root itself. |
-| **Absolute** | `"/etc/config"`, `"/home/user/file"` | Used as-is (filesystem root — **not** workspace root). |
+| **Absolute** | `"/etc/config"`, `"/home/user/file"` | Used as-is (filesystem root, **not** workspace root). |
 
-> ⚠️ Common mistake: `"/"` or `"/src"` refers to the **filesystem root**, not the workspace root. Use `"."` or `"./src"` for workspace-relative paths.
 
 ---
 
 ## Configuration
 
-### `DirectoryConfiguration` default constructor
+### Workspace types
 
-Construct a `DirectoryConfiguration` with no arguments to read all values from environment variables.
-
-```typescript
-import { DirectoryConfiguration } from '@johannes.latzel/llm-chat-file';
-const config = new DirectoryConfiguration();
-```
-
-Alternatively, pass an options object to override specific values:
+`Workspace`, `DirectoryConfiguration`, `AccessType`, and `SwitchWorkspaceTool` are provided by
+[`@johannes.latzel/llm-chat-workspace`](https://github.com/johanneslatzel/llm-chat-workspace).
+Import them from there, see its [documentation](https://johanneslatzel.github.io/llm-chat-workspace/)
+for the class APIs and the native `LLM_CHAT_WORKSPACE_*` environment variables.
 
 ```typescript
+import { Workspace, DirectoryConfiguration, AccessType } from '@johannes.latzel/llm-chat-workspace';
+
 const config = new DirectoryConfiguration([
     { type: AccessType.Read, path: '/var/log' },
     { type: AccessType.Write, path: '/home/project' },
 ]);
+const ws = new Workspace(config);
 ```
-
-See [Environment Variables](env.md) for supported variables.
 
 ### `SearchConfiguration`
 
@@ -69,7 +65,7 @@ Controls maximum characters per file read/write and maximum file size for read o
 
 | Parameter | Type | Description | Env var | Default |
 |-----------|------|-------------|---------|---------|
-| `maxCharsPerFile` | number | Max characters per file read/write | `LLM_CHAT_FS_MAX_CHARS_PER_FILE` | `10000` |
+| `maxCharsPerFile` | number | Max characters per file read/write | `LLM_CHAT_FS_MAX_CHARS_PER_FILE` | `100000` |
 | `maxFileSize` | number | Max file size in bytes for read ops | `LLM_CHAT_FS_MAX_FILE_SIZE` | `10485760` (10MB) |
 | `requireReadBeforeWrite` | boolean | Require `read_file` before write/edit tools | `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE` | `true` |
 
@@ -92,32 +88,30 @@ const pool = new FilePool(new FileConfiguration(undefined, undefined, false)); /
 
 **How it works:**
 
-1. `ReadFileTool` calls `FilePool.recordRead(resolvedPath)` — stores `Date.now()`
-2. Write/edit tools call `FilePool.verifyWrite(resolvedPath)` — checks `st.mtime > lastRead`; returns error if file changed since last read
-3. On success, write tools call `FilePool.recordWrite(resolvedPath)` — updates stored timestamp so the same tool can write again without an intervening read
+1. `ReadFileTool` calls `FilePool.recordRead(resolvedPath)`, stores `Date.now()`
+2. Write/edit tools call `FilePool.verifyWrite(resolvedPath)`, checks `st.mtime > lastRead`; returns error if file changed since last read
+3. On success, write tools call `FilePool.recordWrite(resolvedPath)`, updates stored timestamp so the same tool can write again without an intervening read
 
-`WriteFileTool` sets `allowNew: true`, so writing a brand-new file (ENOENT on stat) succeeds without a prior read. All other edit tools require an explicit prior `read_file`. Edit tool internal reads do NOT count as tracked reads — only explicit `read_file` calls satisfy the requirement.
+`WriteFileTool` sets `allowNew: true`, so writing a brand-new file (ENOENT on stat) succeeds without a prior read. All other edit tools require an explicit prior `read_file`. Edit tool internal reads do NOT count as tracked reads, only explicit `read_file` calls satisfy the requirement.
 
 ### `Workspace`
 
-Manages the current workspace path and access control.
+Manages the current workspace path and access control. Provided by `@johannes.latzel/llm-chat-workspace`, see [Workspace types](#workspace-types) and its [documentation](https://johanneslatzel.github.io/llm-chat-workspace/) for construction and the full API.
 
 ```typescript
-import { Workspace, AccessType } from '@johannes.latzel/llm-chat-file';
+import { Workspace, DirectoryConfiguration, AccessType } from '@johannes.latzel/llm-chat-workspace';
 
-const ws = new Workspace({
-    accesses: [
-        { type: AccessType.Write, path: '/home/project' },
-        { type: AccessType.Read, path: '/shared/data' },
-    ],
-});
+const ws = new Workspace(new DirectoryConfiguration([
+    { type: AccessType.Write, path: '/home/project' },
+    { type: AccessType.Read, path: '/shared/data' },
+]));
 ```
 
 ---
 
 ## ReadFileTool (`read_file`)
 
-Reads the full contents of one or more text files. Always pass an array of file paths via `paths` — use `["file.txt"]` for a single file or `["a.txt", "b.txt"]` for batch. Supports optional character limits and line ranges (`start_line`/`end_line`) for reading specific sections. For partial file edits, see `replace_file_lines`, `insert_file_content`, or `replace_file_content`.
+Reads the full contents of one or more text files. Always pass an array of file paths via `paths`, use `["file.txt"]` for a single file or `["a.txt", "b.txt"]` for batch. Supports optional character limits and line ranges (`start_line`/`end_line`) for reading specific sections. For partial file edits, see `replace_file_lines`, `insert_file_content`, or `replace_file_content`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -129,19 +123,21 @@ Reads the full contents of one or more text files. Always pass an array of file 
 **Returns:** Each path produces its own result (one entry per file). The LLM sees them as separate tool responses, each with its own status and content. Binary files are rejected.
 
 ```typescript
-const ws = new Workspace({ accesses: [{ type: AccessType.Write, path: '/my/project' }] });
+const ws = new Workspace(new DirectoryConfiguration([
+    { type: AccessType.Write, path: '/my/project' },
+]));
 const tool = new ReadFileTool(ws);
 
 // Single file
 const [result] = await tool.execute({ paths: ['src/index.ts'] });
 // result: "--- /my/project/src/index.ts (lines 1-42 of 42) ---\n...content..."
 
-// Batch read — each file is a separate result
+// Batch read, each file is a separate result
 const results = await tool.execute({ paths: ['src/main.ts', 'src/utils.ts'] });
 // results[0]: "--- /my/project/src/main.ts (lines 1-10 of 10) ---\n...content..."
 // results[1]: "--- /my/project/src/utils.ts (lines 1-8 of 8) ---\n...content..."
 
-// Batch with partial failure — each file has its own status
+// Batch with partial failure, each file has its own status
 const results = await tool.execute({ paths: ['exists.txt', 'missing.txt'] });
 // results[0].status: "success"
 // results[0].result: "--- /my/project/exists.txt (lines 1-5 of 5) ---\n...content..."
@@ -264,10 +260,10 @@ Searches for files and directories by name, content pattern, and/or creation/mod
 | `content_pattern` | string | no | JavaScript regex to search file contents (case-insensitive, files only) |
 | `max_results` | number | no | Maximum results (default: config max) |
 | `max_size` | number | no | Maximum file size in bytes for content searches (capped by config) |
-| `created_after` | string | no | ISO 8601 datetime — files created after this time |
-| `created_before` | string | no | ISO 8601 datetime — files created before this time |
-| `modified_after` | string | no | ISO 8601 datetime — files modified after this time |
-| `modified_before` | string | no | ISO 8601 datetime — files modified before this time |
+| `created_after` | string | no | ISO 8601 datetime, files created after this time |
+| `created_before` | string | no | ISO 8601 datetime, files created before this time |
+| `modified_after` | string | no | ISO 8601 datetime, files modified after this time |
+| `modified_before` | string | no | ISO 8601 datetime, files modified before this time |
 
 **Returns:** One entry per line. File content matches show `path:line: content`; name-only matches show `path`; directory matches show `path/`. When timestamp filters are active, each result appends `(created: ..., modified: ...)`. Binary files and skipped directories are silently excluded. Search has a configurable timeout; partial results are returned if exceeded.
 
@@ -318,17 +314,17 @@ const result = await tool.execute({ path: '.' });
 
 ## CreateFolderTool (`create_folder`)
 
-Creates a directory and any necessary parent directories.
+Creates directories and any necessary parent directories.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | Directory path (absolute, or relative to workspace root) |
+| `paths` | string[] | yes | Array of directory paths to create |
 
 **Returns:** Confirmation message with the created directory path.
 
 ```typescript
 const tool = new CreateFolderTool(ws);
-const result = await tool.execute({ path: 'src/components' });
+const result = await tool.execute({ paths: ['src/components'] });
 // "Created directory: /my/project/src/components/"
 ```
 
@@ -336,21 +332,21 @@ const result = await tool.execute({ path: 'src/components' });
 
 ## DeleteFileTool (`delete_file`)
 
-Deletes a file or directory. Use `recursive=true` to delete non-empty directories and all their contents.
+Deletes files or empty directories. Use `recursive=true` to delete non-empty directories and all their contents.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | Path (absolute, or relative to workspace root) |
+| `paths` | string[] | yes | Array of file or directory paths to delete |
 | `recursive` | boolean | no | Set to `true` to delete directories and their contents recursively |
 
 **Returns:** Confirmation message with the deleted path and type.
 
 ```typescript
 const tool = new DeleteFileTool(ws);
-const result = await tool.execute({ path: 'old-file.txt' });
+const result = await tool.execute({ paths: ['old-file.txt'] });
 // "Deleted file: /my/project/old-file.txt"
 
-const result = await tool.execute({ path: 'old-dir', recursive: true });
+const result = await tool.execute({ paths: ['old-dir'], recursive: true });
 // "Deleted directory: /my/project/old-dir"
 ```
 
@@ -387,28 +383,29 @@ No parameters required.
 **Returns:** One line per directory with its access type; the current workspace is marked with `(current workspace)`.
 
 ```typescript
-const tool = new FileAccessInfoTool(ws);
+const tool = new FileAccessInfoTool(ws, new FileConfiguration());
 const result = await tool.execute({});
 // "Configured file system access:
 //   /home/user/project                                       write  (current workspace)
-//   /var/log                                                  read"
+//   /var/log                                                  read
+// max chars per file: 100000"
 ```
 
 ---
 
 ## EntryInfoTool (`entry_info`)
 
-Returns metadata about a filesystem entry (file, directory, symlink, etc.) — type, size, timestamps, permissions, and symlink target if applicable.
+Returns metadata about one or more filesystem entries (files, directories, symlinks, etc.): type, size, timestamps, permissions, and symlink target if applicable.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | Path (absolute, or relative to workspace root) |
+| `paths` | string[] | yes | Array of paths to get info for (absolute, or relative to workspace root) |
 
 **Returns:** One line per metadata field.
 
 ```typescript
 const tool = new EntryInfoTool(ws);
-const result = await tool.execute({ path: 'src/index.ts' });
+const result = await tool.execute({ paths: ['src/index.ts'] });
 // "Path: /home/user/project/src/index.ts
 //  Type: file
 //  Size: 1240 bytes
@@ -444,7 +441,8 @@ const result = await tool.execute({ path: '/another/project' });
 Bundles all 13 file tools into a single package for easy registration with `ToolSuite.add()`. Provides a tutorial with path-resolution guidance.
 
 ```typescript
-import { FileToolPackage, Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-file';
+import { FileToolPackage } from '@johannes.latzel/llm-chat-file';
+import { Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-workspace';
 import { ToolSuite } from '@johannes.latzel/llm-chat';
 
 const ws = new Workspace(new DirectoryConfiguration());
@@ -466,7 +464,6 @@ suite.add(pkg);
 |--------|---------|-------------|
 | `tools()` | `Tool[]` | All 13 file tools |
 | `tutorial()` | `string \| null` | Path-resolution guidance, common mistakes, and exploration tips |
-| `composeTutorial()` | `string` | Formatted output with package name, tool list, and tutorial |
 
 The bundled tools are: `search_entries`, `list_directory`, `read_file`, `write_file`, `replace_file_lines`, `insert_file_content`, `replace_file_content`, `entry_info`, `delete_file`, `create_folder`, `move_file`, `file_access_info`, `switch_workspace`.
 
@@ -474,4 +471,4 @@ The bundled tools are: `search_entries`, `list_directory`, `read_file`, `write_f
 
 ## License
 
-MIT — see [`LICENSE`](https://github.com/johanneslatzel/llm-chat-file/blob/main/LICENSE).
+MIT. See [`LICENSE`](https://github.com/johanneslatzel/llm-chat-file/blob/main/LICENSE).

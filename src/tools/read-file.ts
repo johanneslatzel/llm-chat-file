@@ -12,7 +12,7 @@ import type { Stats } from 'node:fs';
 import { FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
 import { isBinary } from '../lib/helpers.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /** Tool that reads the contents of a text file within the allowed workspace directories. */
 const TRUNCATION_SUFFIX = '\n... [truncated]';
@@ -138,7 +138,7 @@ export class ReadFileTool extends Tool {
             }
             await this.filePool?.recordRead(resolved);
             return {
-                result: `--- ${resolved} (lines ${sliceStart + 1}-${Math.min(sliceEnd, lines.length)} of ${lines.length}) ---\n${result}`,
+                result: `--- ${resolved} (lines ${sliceStart + 1}-${Math.min(sliceEnd, lines.length)} of ${lines.length}, ${content.length} chars) ---\n${result}`,
                 status: ResultStatus.Success
             };
         } catch (e) {

@@ -3,9 +3,7 @@ import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DeleteFileTool } from '../../src/index.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
-import { DirectoryConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -161,7 +159,7 @@ describe('DeleteFileTool - no config', () => {
     });
 });
 
-describe('filesystem — DeleteFileTool catch', () => {
+describe('filesystem, DeleteFileTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
 

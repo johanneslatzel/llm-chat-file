@@ -11,7 +11,7 @@ import type { Stats } from 'node:fs';
 import { FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
 import { isBinary } from '../lib/helpers.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /**
  * Tool that inserts new text content at a specific line in an existing text file
@@ -120,15 +120,19 @@ export class InsertFileContentTool extends Tool {
 
             if (result.length > this.fc.maxCharsPerFile) {
                 return {
-                    result: `Result exceeds max length of ${this.fc.maxCharsPerFile}`,
+                    result: `Resulting file would be ${result.length} chars, exceeds max length of ${this.fc.maxCharsPerFile}`,
                     status: ResultStatus.Error
                 };
             }
 
             await fsp.writeFile(resolved, result, 'utf-8');
             await this.filePool?.recordWrite(resolved);
+            const range =
+                insertLines.length > 1
+                    ? `lines ${line}-${line + insertLines.length - 1}`
+                    : `line ${line}`;
             return {
-                result: `Inserted content at line ${line} in ${resolved}`,
+                result: `Inserted content at ${range} in ${resolved}`,
                 status: ResultStatus.Success
             };
         } catch (e) {

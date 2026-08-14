@@ -12,7 +12,7 @@ import type { Stats } from 'node:fs';
 import { FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
 import { isBinary } from '../lib/helpers.js';
-import type { Workspace } from '../lib/workspace.js';
+import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
 /**
  * Tool that replaces an exact substring in one or more existing text files
@@ -161,15 +161,17 @@ export class ReplaceFileContentTool extends Tool {
 
             if (result.length > this.fc.maxCharsPerFile) {
                 return {
-                    result: `Result exceeds max length of ${this.fc.maxCharsPerFile}`,
+                    result: `Resulting file would be ${result.length} chars, exceeds max length of ${this.fc.maxCharsPerFile}`,
                     status: ResultStatus.Error
                 };
             }
 
+            const count =
+                replaceAll && oldContent !== '' ? fileContent.split(oldContent).length - 1 : 1;
             await fsp.writeFile(resolved, result, 'utf-8');
             await this.filePool?.recordWrite(resolved);
             return {
-                result: `Replaced content in ${resolved}`,
+                result: `Replaced ${count} occurrence${count === 1 ? '' : 's'} in ${resolved}`,
                 status: ResultStatus.Success
             };
         } catch (e) {

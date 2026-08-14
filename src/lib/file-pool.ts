@@ -77,10 +77,12 @@ export class FilePool {
                     };
                 }
             } catch {
-                return {
-                    result: `File must be read before writing: ${resolved}`,
-                    status: ResultStatus.Error
-                };
+                // The file no longer exists (e.g. it was deleted after a prior
+                // read or write). Writing recreates it fresh, so there is no
+                // on-disk content the read-before-write policy must protect.
+                // Returning an error here would deadlock: the missing file cannot
+                // be read, making write -> delete -> write impossible.
+                return null;
             }
             return null;
         });
@@ -96,7 +98,7 @@ export class FilePool {
     async recordWrite(resolved: string): Promise<void> {
         if (!this.fc.requireReadBeforeWrite) return;
         await this.mutex.runExclusive(() => {
-            // Same +1 buffer as recordRead — ensures a write that lands in the same
+            // Same +1 buffer as recordRead, ensures a write that lands in the same
             // millisecond as verifyWrite's mtime check isn't mistaken for external
             // modification.
             this._timestamps.set(resolved, Date.now() + 1);

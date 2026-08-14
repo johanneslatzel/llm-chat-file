@@ -4,9 +4,8 @@ import { writeFileSync } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { ReadFileTool } from '../../src/index.js';
-import { FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { FileConfiguration } from '../../src/lib/config.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -44,6 +43,7 @@ describe('ReadFileTool', () => {
         const [result] = await tool.execute({ paths: ['hello.txt'] }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Hello, world!');
+        expect(result.result).toMatch(/\(\s*lines \d+-\d+ of \d+, \d+ chars\)/);
     });
 
     it('reports missing paths parameter', async () => {
@@ -89,6 +89,7 @@ describe('ReadFileTool', () => {
         expect(result.result).toContain('line4');
         expect(result.result).not.toContain('line1');
         expect(result.result).not.toContain('line5');
+        expect(result.result).toMatch(/of 6, 30 chars\)/);
     });
 
     it('truncates content exceeding max_chars', async () => {
@@ -98,6 +99,7 @@ describe('ReadFileTool', () => {
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('[truncated]');
         expect(result.result.length).toBeLessThan(200);
+        expect(result.result).toMatch(/of 1, 200 chars\)/);
     });
 });
 
@@ -175,7 +177,7 @@ describe('ReadFileTool - edge cases', () => {
     });
 });
 
-describe('filesystem — ReadFileTool catch', () => {
+describe('filesystem, ReadFileTool catch', () => {
     let tmpDir: string;
     let ws: Workspace;
     let fc: FileConfiguration | undefined;

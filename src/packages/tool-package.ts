@@ -1,5 +1,5 @@
 import { ToolPackage } from '@johannes.latzel/llm-chat';
-import { Workspace } from '../lib/workspace.js';
+import { SwitchWorkspaceTool, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { SearchConfiguration, FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
 import { ReadFileTool } from '../tools/read-file.js';
@@ -9,7 +9,6 @@ import { ListDirectoryTool } from '../tools/list-directory.js';
 import { CreateFolderTool } from '../tools/create-folder.js';
 import { DeleteFileTool } from '../tools/delete-file.js';
 import { MoveFileTool } from '../tools/move-file.js';
-import { SwitchWorkspaceTool } from '../tools/switch-workspace.js';
 import { FileAccessInfoTool } from '../tools/file-access-info.js';
 import { EntryInfoTool } from '../tools/entry-info.js';
 import { ReplaceFileLinesTool } from '../tools/replace-file-lines.js';
@@ -54,7 +53,7 @@ export class FileToolPackage extends ToolPackage {
             new DeleteFileTool(workspace),
             new CreateFolderTool(workspace),
             new MoveFileTool(workspace),
-            new FileAccessInfoTool(workspace),
+            new FileAccessInfoTool(workspace, safeConfig),
             new SwitchWorkspaceTool(workspace)
         ]);
         this.fileConfig = safeConfig;

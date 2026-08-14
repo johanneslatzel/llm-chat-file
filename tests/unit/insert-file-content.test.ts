@@ -3,10 +3,9 @@ import { ResultStatus } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { InsertFileContentTool } from '../../src/index.js';
-import { FileConfiguration, DirectoryConfiguration } from '../../src/lib/config.js';
+import { FileConfiguration } from '../../src/lib/config.js';
 import { FilePool } from '../../src/lib/file-pool.js';
-import { Workspace } from '../../src/lib/workspace.js';
-import { AccessType } from '../../src/lib/types.js';
+import { AccessType, DirectoryConfiguration, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { createTempDir, removeTempDir, createTempFile } from '../index.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -41,6 +40,8 @@ describe('InsertFileContentTool', () => {
         const result = await tool.execute({ path: filePath, content: 'inserted', line: 2 });
         expect(result[0].status).toBe(ResultStatus.Success);
         expect(result[0].result).toContain('Inserted');
+        expect(result[0].result).toContain('line 2');
+        expect(result[0].result).not.toMatch(/lines \d+-\d+/);
         const content = await fsp.readFile(filePath, 'utf-8');
         expect(content).toBe('line1\ninserted\nline2\nline3');
     });
@@ -65,6 +66,7 @@ describe('InsertFileContentTool', () => {
         const filePath = createTempFile(tmpDir, 'test.txt', 'line1\nline4');
         const result = await tool.execute({ path: filePath, content: 'line2\nline3', line: 2 });
         expect(result[0].status).toBe(ResultStatus.Success);
+        expect(result[0].result).toContain('lines 2-3');
         const content = await fsp.readFile(filePath, 'utf-8');
         expect(content).toBe('line1\nline2\nline3\nline4');
     });
@@ -132,6 +134,7 @@ describe('InsertFileContentTool', () => {
         const result = await localTool.execute({ path: filePath, content: 'too long content' });
         expect(result[0].status).toBe(ResultStatus.Error);
         expect(result[0].result).toContain('max length');
+        expect(result[0].result).toMatch(/Resulting file would be \d+ chars, exceeds max length of 5/);
     });
 
     it('reports error for binary file', async () => {

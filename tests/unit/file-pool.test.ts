@@ -46,13 +46,21 @@ describe('FilePool', () => {
             expect(result!.result).toContain('changed since last read');
         });
 
-        it('rejects write when file is deleted after read', async () => {
+        it('allows write when file is deleted after read', async () => {
             const filePath = createTempFile(tmpDir, 'test.txt', 'content');
             await pool.recordRead(filePath);
             await fsp.rm(filePath);
             const result = await pool.verifyWrite(filePath);
-            expect(result).not.toBeNull();
-            expect(result!.result).toContain('must be read');
+            expect(result).toBeNull();
+        });
+
+        it('allows creating a deleted file again after a prior write', async () => {
+            const filePath = createTempFile(tmpDir, 'test.txt', 'content');
+            await pool.recordRead(filePath);
+            await pool.recordWrite(filePath);
+            await fsp.rm(filePath);
+            const result = await pool.verifyWrite(filePath, true);
+            expect(result).toBeNull();
         });
 
         it('allows new file without prior read when allowNew is true', async () => {
