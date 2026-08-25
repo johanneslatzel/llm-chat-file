@@ -97,6 +97,7 @@ describe('ListDirectoryTool - edge cases', () => {
         const [result] = await tool.execute({ path: 'afile.txt' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('not a directory');
+        expect(result.result).toContain('read_file');
     });
 
     it('lists an empty directory', async () => {

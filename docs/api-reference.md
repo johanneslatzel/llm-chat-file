@@ -258,6 +258,7 @@ Searches for files and directories by name, content pattern, and/or creation/mod
 | `type` | string | no | Entry type filter: `"file"`, `"directory"`, or `"both"` (default) |
 | `name_pattern` | string | no | JavaScript regex to match file/directory names (case-insensitive) |
 | `content_pattern` | string | no | JavaScript regex to search file contents (case-insensitive, files only) |
+| `strict` | boolean | no | When `true` (default) patterns use the Unicode `u` flag, which rejects legacy escapes like `\"`. Set `strict=false` to allow such patterns (uses only the `i` flag). |
 | `max_results` | number | no | Maximum results (default: config max) |
 | `max_size` | number | no | Maximum file size in bytes for content searches (capped by config) |
 | `created_after` | string | no | ISO 8601 datetime, files created after this time |
@@ -266,6 +267,8 @@ Searches for files and directories by name, content pattern, and/or creation/mod
 | `modified_before` | string | no | ISO 8601 datetime, files modified before this time |
 
 **Returns:** One entry per line. File content matches show `path:line: content`; name-only matches show `path`; directory matches show `path/`. When timestamp filters are active, each result appends `(created: ..., modified: ...)`. Binary files and skipped directories are silently excluded. Search has a configurable timeout; partial results are returned if exceeded.
+
+If `path` does not exist or points at a file, the tool returns an error (`ResultStatus.Error`) with actionable guidance - suggesting `read_file` for file contents or the containing directory to search - instead of returning empty results.
 
 ```typescript
 const tool = new SearchEntriesTool(ws);
@@ -302,7 +305,7 @@ Lists files and directories in a path. Directories are suffixed with `/`.
 | `path` | string | yes | Directory path (absolute, or relative to workspace root) |
 | `recursive` | boolean | no | Set to `true` for recursive depth-first listing |
 
-**Returns:** One entry per line; directories end with `/`.
+**Returns:** One entry per line; directories end with `/`. If `path` is a file, an error suggesting `read_file` is returned; missing paths return a "Path not found" error.
 
 ```typescript
 const tool = new ListDirectoryTool(ws);
@@ -332,7 +335,7 @@ const result = await tool.execute({ paths: ['src/components'] });
 
 ## DeleteFileTool (`delete_file`)
 
-Deletes files or empty directories. Use `recursive=true` to delete non-empty directories and all their contents.
+Deletes files or empty directories. With `recursive=true`, deletes non-empty directories including their entire subtree (deeply nested files as well as trees containing only empty subdirectories). Symlinks inside the tree are removed themselves; their targets outside the tree are never followed or deleted.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -343,12 +346,17 @@ Deletes files or empty directories. Use `recursive=true` to delete non-empty dir
 
 ```typescript
 const tool = new DeleteFileTool(ws);
-const result = await tool.execute({ paths: ['old-file.txt'] });
+let result = await tool.execute({ paths: ['old-file.txt'] });
 // "Deleted file: /my/project/old-file.txt"
 
-const result = await tool.execute({ paths: ['old-dir'], recursive: true });
+result = await tool.execute({ paths: ['old-dir'], recursive: true });
 // "Deleted directory: /my/project/old-dir"
+
+result = await tool.execute({ paths: ['old-dir'] });
+// "Directory not empty: '/my/project/old-dir'. Use recursive=true to delete directories and their contents."
 ```
+
+Deleting a non-empty directory without `recursive=true` fails with the actionable message shown above instead of a bare filesystem error. Other filesystem failures (e.g. permission errors during recursive removal) are reported as `Error deleting <file|directory>: <message>`, where the message identifies the offending path.
 
 ---
 

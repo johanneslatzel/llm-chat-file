@@ -34,6 +34,56 @@ describe('SearchEntriesTool, content search', () => {
         removeTempDir(tmpDir);
     });
 
+    it('returns an actionable error when path points at a file', async () => {
+        createTempFile(tmpDir, 'plain.txt', 'hello');
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({
+            content_pattern: 'hello',
+            path: path.join(tmpDir, 'plain.txt')
+        }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('is a file, not a directory');
+        expect(result.result).toContain('read_file');
+        expect(result.result).toContain(tmpDir);
+        expect(result.result).not.toContain('No matching entries found');
+    });
+
+    it('reports missing search paths instead of empty results', async () => {
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({
+            content_pattern: 'hello',
+            path: path.join(tmpDir, 'does-not-exist')
+        }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('Path not found');
+        expect(result.result).toContain('entry_info');
+        expect(result.result).not.toContain('No matching entries found');
+    });
+
+    it('reports access failures on the search root', async () => {
+        vi.mocked(fsp.stat).mockRejectedValueOnce(
+            Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })
+        );
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({
+            content_pattern: 'hello',
+            path: tmpDir
+        }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('cannot access');
+    });
+
+    it('still searches file contents when given the containing directory', async () => {
+        createTempFile(tmpDir, 'needle.txt', 'findme marker');
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({
+            content_pattern: 'findme',
+            path: tmpDir
+        }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('needle.txt');
+    });
+
     it('finds files by content pattern', async () => {
         createTempDirStructure(tmpDir, {
             'a.txt': 'hello world',
@@ -53,6 +103,41 @@ describe('SearchEntriesTool, content search', () => {
         const [result] = await tool.execute({ content_pattern: 'hello' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('Hello World');
+    });
+
+    it('allows legacy escape sequences in content_pattern when strict=false', async () => {
+        createTempFile(tmpDir, 'code.ts', "import api from './api'");
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ content_pattern: 'from.*[\\\'"].*api', strict: false }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('code.ts');
+    });
+
+    it('rejects legacy escape sequences with strict=true (default) and hints at strict=false', async () => {
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ content_pattern: 'from.*[\\\'"].*api' }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('Invalid content_pattern regex');
+        expect(result.result).toContain('strict=false');
+    });
+
+    it('rejects genuinely invalid regex regardless of strict setting', async () => {
+        const tool = new SearchEntriesTool(ws);
+        const [strictResult] = await tool.execute({ content_pattern: '[invalid', strict: true }) as [ToolResult];
+        expect(strictResult.status).toBe(ResultStatus.Error);
+        expect(strictResult.result).toContain('Invalid content_pattern regex');
+
+        const [looseResult] = await tool.execute({ content_pattern: '[invalid', strict: false }) as [ToolResult];
+        expect(looseResult.status).toBe(ResultStatus.Error);
+        expect(looseResult.result).toContain('Invalid content_pattern regex');
+    });
+
+    it('accepts valid Unicode-safe regex with strict=true (default)', async () => {
+        createTempFile(tmpDir, 'file.txt', 'Hello \u2603 world');
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ content_pattern: '\\u2603', strict: true }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('file.txt');
     });
 
     it('returns error for invalid regex', async () => {
@@ -182,6 +267,22 @@ describe('SearchEntriesTool, name search', () => {
         const [result] = await tool.execute({ name_pattern: '[invalid' }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toContain('Invalid name_pattern regex');
+    });
+
+    it('allows legacy escape sequences in name_pattern when strict=false', async () => {
+        createTempFile(tmpDir, "it's.txt", '');
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ name_pattern: 'it\\\'s', strict: false }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain("it's.txt");
+    });
+
+    it('rejects legacy escape sequences in name_pattern with strict=true (default)', async () => {
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ name_pattern: 'it\\\'s' }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Error);
+        expect(result.result).toContain('Invalid name_pattern regex');
+        expect(result.result).toContain('strict=false');
     });
 
     it('respects path scope', async () => {
@@ -317,6 +418,16 @@ describe('SearchEntriesTool, merged behavior', () => {
         createTempFile(tmpDir, 'readme.txt', '');
         const tool = new SearchEntriesTool(ws);
         const [result] = await tool.execute({ name_pattern: 'data|readme' }) as [ToolResult];
+        expect(result.result).toContain('data/');
+        expect(result.result).toContain('readme.txt');
+    });
+
+    it('type: "both" explicitly returns files and directories', async () => {
+        mkdirSync(path.join(tmpDir, 'data'), { recursive: true });
+        createTempFile(tmpDir, 'readme.txt', '');
+        const tool = new SearchEntriesTool(ws);
+        const [result] = await tool.execute({ name_pattern: 'data|readme', type: 'both' }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('data/');
         expect(result.result).toContain('readme.txt');
     });

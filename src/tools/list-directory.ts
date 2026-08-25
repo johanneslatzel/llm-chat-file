@@ -65,7 +65,10 @@ export class ListDirectoryTool extends Tool {
             };
         }
         if (!stat.isDirectory()) {
-            return { result: 'Path is not a directory', status: ResultStatus.Error };
+            return {
+                result: `Path is not a directory: '${resolved}'. It is a file - use read_file to inspect its contents.`,
+                status: ResultStatus.Error
+            };
         }
 
         const recursive = args.recursive === true;

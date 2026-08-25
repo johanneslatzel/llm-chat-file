@@ -10,7 +10,12 @@ import {
 import * as fsp from 'node:fs/promises';
 import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 
-/** Tool that deletes files and directories within the allowed workspace directories. */
+/** Tool that deletes files and directories within the allowed workspace directories.
+ *
+ * Non-empty directories are only deleted when `recursive=true` is passed; without
+ * it a refusal message names the option instead of surfacing a bare ENOTEMPTY
+ * error. Recursive deletion never follows symlinks out of the deleted tree.
+ */
 export class DeleteFileTool extends Tool {
     private ws: Workspace;
 
@@ -28,7 +33,8 @@ export class DeleteFileTool extends Tool {
                         PropertyType.Array
                     ),
                     recursive: new ToolParameterProperty(
-                        'Delete directories and their contents recursively'
+                        'Delete directories and their contents recursively',
+                        PropertyType.Boolean
                     )
                 },
                 ['paths']
@@ -78,8 +84,15 @@ export class DeleteFileTool extends Tool {
             }
             return { result: `Deleted ${label}: ${resolved}`, status: ResultStatus.Success };
         } catch (e) {
+            const err = e as NodeJS.ErrnoException;
+            if (err.code === 'ENOTEMPTY' && !recursive) {
+                return {
+                    result: `Directory not empty: '${resolved}'. Use recursive=true to delete directories and their contents.`,
+                    status: ResultStatus.Error
+                };
+            }
             return {
-                result: `Error deleting ${label}: ${(e as Error).message}`,
+                result: `Error deleting ${label}: ${err.message}`,
                 status: ResultStatus.Error
             };
         }

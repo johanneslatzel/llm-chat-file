@@ -7,6 +7,7 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import * as fsp from 'node:fs/promises';
+import * as path from 'node:path';
 import type { Stats } from 'node:fs';
 import { FileConfiguration, SearchConfiguration } from '../lib/config.js';
 import { isBinary } from '../lib/helpers.js';
@@ -21,6 +22,7 @@ enum SearchType {
 function parseType(raw: unknown): SearchType | null {
     if (raw === SearchType.File) return SearchType.File;
     if (raw === SearchType.Directory) return SearchType.Directory;
+    if (raw === SearchType.Both) return SearchType.Both;
     if (raw === undefined || raw === null) return SearchType.Both;
     return null;
 }
@@ -53,7 +55,7 @@ export class SearchEntriesTool extends Tool {
     ) {
         super(
             'search_entries',
-            'Searches for files and directories by name and/or content pattern. If no pattern is given, returns all entries. File content matches show the matching line; file name matches show the path; directories are suffixed with "/". Paths can be absolute or relative to workspace root (use "." for the workspace root itself).',
+            'Searches for files and directories by name and/or content pattern. If no pattern is given, returns all entries. File content matches show the matching line; file name matches show the path; directories are suffixed with "/". Paths can be absolute or relative to workspace root (use "." for the workspace root itself). If a regex fails with a legacy escape (e.g. \\"), set strict=false.',
             new ToolParameters(
                 {
                     path: new ToolParameterProperty(
@@ -67,6 +69,10 @@ export class SearchEntriesTool extends Tool {
                     ),
                     content_pattern: new ToolParameterProperty(
                         'JavaScript regex to search file contents (files only, case-insensitive)'
+                    ),
+                    strict: new ToolParameterProperty(
+                        'When true (default), patterns are compiled with the Unicode "u" flag, which rejects legacy escape sequences like \\" that LLMs often produce. Set strict=false to allow such legacy escapes (patterns are then compiled with only the "i" flag).',
+                        PropertyType.Boolean
                     ),
                     max_results: new ToolParameterProperty(
                         'Maximum number of results to return',
@@ -97,16 +103,23 @@ export class SearchEntriesTool extends Tool {
         this.fc = fileConfig ?? new FileConfiguration();
     }
 
-    private parseRegex(raw: unknown, label: string): ParseResult<RegExp | undefined> {
+    private parseRegex(
+        raw: unknown,
+        label: string,
+        strict: boolean
+    ): ParseResult<RegExp | undefined> {
         const str = typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : undefined;
         if (!str) return { ok: true, value: undefined };
         try {
-            return { ok: true, value: new RegExp(str, 'iu') };
+            return { ok: true, value: new RegExp(str, strict ? 'iu' : 'i') };
         } catch (e) {
+            const hint = strict
+                ? ` (Set strict=false to allow legacy escape sequences like \\" which fail under the Unicode "u" flag.)`
+                : '';
             return {
                 ok: false,
                 error: {
-                    result: `Invalid ${label} regex: ${(e as Error).message}`,
+                    result: `Invalid ${label} regex: ${(e as Error).message}${hint}`,
                     status: ResultStatus.Error
                 }
             };
@@ -128,6 +141,46 @@ export class SearchEntriesTool extends Tool {
             return { ok: true, value: dir };
         }
         return { ok: true, value: this.ws.currentPath };
+    }
+
+    /**
+     * Validates that the resolved search root exists and is a directory before
+     * any walking starts, so callers get an actionable error instead of a
+     * silent "No matching entries found".
+     *
+     * @param raw - The raw path argument as supplied by the caller.
+     * @param searchDir - The resolved absolute search root.
+     * @returns An error result when the root is missing or not a directory,
+     *   otherwise `undefined`.
+     */
+    private async validateSearchRoot(
+        raw: unknown,
+        searchDir: string
+    ): Promise<PartialToolResult | undefined> {
+        const shown = typeof raw === 'string' && raw.trim() ? raw.trim() : searchDir;
+        let st: Stats;
+        try {
+            st = await fsp.stat(searchDir);
+        } catch (e) {
+            if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+                return {
+                    result: `Path not found: '${shown}' (resolved to '${searchDir}'). Check the spelling, or use entry_info to verify the path.`,
+                    status: ResultStatus.Error
+                };
+            }
+            return {
+                result: `Invalid path '${shown}': cannot access '${searchDir}': ${(e as Error).message}`,
+                status: ResultStatus.Error
+            };
+        }
+        if (!st.isDirectory()) {
+            const parent = path.dirname(searchDir);
+            return {
+                result: `Invalid path '${shown}': '${searchDir}' is a file, not a directory. Use read_file to inspect this file, or pass its containing directory '${parent}' to search_entries.`,
+                status: ResultStatus.Error
+            };
+        }
+        return undefined;
     }
 
     private parseDateFilters(args: Record<string, unknown>): ParseResult<DateFilters> {
@@ -272,10 +325,12 @@ export class SearchEntriesTool extends Tool {
     }
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const nameResult = this.parseRegex(args.name_pattern, 'name_pattern');
+        const strict = args.strict !== false;
+
+        const nameResult = this.parseRegex(args.name_pattern, 'name_pattern', strict);
         if (!nameResult.ok) return nameResult.error;
 
-        const contentResult = this.parseRegex(args.content_pattern, 'content_pattern');
+        const contentResult = this.parseRegex(args.content_pattern, 'content_pattern', strict);
         if (!contentResult.ok) return contentResult.error;
 
         const searchType = parseType(args.type);
@@ -288,6 +343,9 @@ export class SearchEntriesTool extends Tool {
 
         const dirResult = this.resolveSearchDir(args.path);
         if (!dirResult.ok) return dirResult.error;
+
+        const rootError = await this.validateSearchRoot(args.path, dirResult.value);
+        if (rootError) return rootError;
 
         const dateResult = this.parseDateFilters(args);
         if (!dateResult.ok) return dateResult.error;
