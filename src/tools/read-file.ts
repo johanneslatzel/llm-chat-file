@@ -30,7 +30,7 @@ export class ReadFileTool extends Tool {
     constructor(workspace: Workspace, fileConfig?: FileConfiguration, filePool?: FilePool) {
         super(
             'read_file',
-            'Reads the full contents of one or more text files. Supports optional line ranges (start_line/end_line, 1-indexed) to read specific sections only. Pass an array of file paths ("paths"). Paths can be absolute or relative to workspace root.',
+            'Reads the full contents of one or more text files. Supports optional line ranges (start_line/end_line, 1-indexed) to read specific sections only. Reads are capped: when the content exceeds the character limit it is truncated at a line boundary and the header reports "TRUNCATED", the number of characters shown, and the start_line to continue from. Pass an array of file paths ("paths"). Paths can be absolute or relative to workspace root.',
             new ToolParameters(
                 {
                     paths: new ToolParameterProperty(
@@ -131,14 +131,42 @@ export class ReadFileTool extends Tool {
             const lines = content.split('\n');
             const sliceStart = startLine ? startLine - 1 : 0;
             const sliceEnd = endLine ? Math.min(endLine, lines.length) : lines.length;
-            const sliced = lines.slice(sliceStart, sliceEnd);
-            let result = sliced.join('\n');
-            if (result.length > maxChars) {
-                result = result.slice(0, maxChars - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
+            const requestedEnd = Math.min(sliceEnd, lines.length);
+            const body = lines.slice(sliceStart, sliceEnd).join('\n');
+
+            let result = body;
+            let truncated = false;
+            let partialLine = false;
+            let shownLines = sliceEnd - sliceStart;
+
+            if (body.length > maxChars) {
+                truncated = true;
+                const budget = Math.max(0, maxChars - TRUNCATION_SUFFIX.length);
+                const cut = body.lastIndexOf('\n', budget);
+                if (cut > 0) {
+                    result = body.slice(0, cut);
+                    shownLines = result.split('\n').length;
+                } else {
+                    result = body.slice(0, budget);
+                    shownLines = 0;
+                    partialLine = true;
+                }
+                result += TRUNCATION_SUFFIX;
             }
+
             await this.filePool?.recordRead(resolved);
+
+            const shownEnd =
+                truncated && !partialLine
+                    ? Math.min(sliceStart + shownLines, requestedEnd)
+                    : requestedEnd;
+            const truncationNote = truncated
+                ? partialLine
+                    ? ` — TRUNCATED: line ${sliceStart + 1} is longer than the character limit (showing first ${result.length - TRUNCATION_SUFFIX.length} chars)`
+                    : ` — TRUNCATED: showing first ${result.length - TRUNCATION_SUFFIX.length} chars; continue with start_line=${shownEnd + 1}`
+                : '';
             return {
-                result: `--- ${resolved} (lines ${sliceStart + 1}-${Math.min(sliceEnd, lines.length)} of ${lines.length}, ${content.length} chars) ---\n${result}`,
+                result: `--- ${resolved} (lines ${sliceStart + 1}-${shownEnd} of ${lines.length}, ${content.length} chars${truncationNote}) ---\n${result}`,
                 status: ResultStatus.Success
             };
         } catch (e) {

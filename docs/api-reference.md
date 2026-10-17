@@ -55,7 +55,7 @@ const config = new SearchConfiguration(100);  // override maxSearchResults
 | Parameter | Type | Description | Env var | Default |
 |-----------|------|-------------|---------|---------|
 | `maxSearchResults` | number | Max results returned | `LLM_CHAT_FS_MAX_SEARCH_RESULTS` | `50` |
-| `maxDisplayEntries` | number | Threshold to switch from paths to count summary | `LLM_CHAT_FS_MAX_DISPLAY_ENTRIES` | `200` |
+| `maxDisplayEntries` | number | Threshold above which matches are replaced by a count summary | `LLM_CHAT_FS_MAX_DISPLAY_ENTRIES` | `200` |
 | `maxTotalEntries` | number | Hard limit: abort with error above this | `LLM_CHAT_FS_MAX_TOTAL_ENTRIES` | `5000` |
 | `timeoutMs` | number | Total search timeout (partial results on timeout) | `LLM_CHAT_FS_SEARCH_TIMEOUT` | `10000` |
 
@@ -120,6 +120,8 @@ Reads the full contents of one or more text files. Always pass an array of file 
 | `start_line` | number | no | First line to read (1-indexed, inclusive) |
 | `end_line` | number | no | Last line to read (1-indexed, inclusive) |
 
+**Truncation:** A read is capped at `maxCharsPerFile` (or the lower `max_chars` argument). When the requested content exceeds the cap it is truncated at the last line boundary that fits, and the header reports the state, e.g. `(lines 1-1 of 5, 24 chars — TRUNCATED: showing first 4 chars; continue with start_line=2)`. If a single line is longer than the cap, the header reports a mid-line truncation instead (`... — TRUNCATED: line 1 is longer than the character limit (showing first K chars)`); page the file with `start_line`/`end_line` to read the rest. The returned body always ends with `... [truncated]`.
+
 **Returns:** Each path produces its own result (one entry per file). The LLM sees them as separate tool responses, each with its own status and content. Binary files are rejected.
 
 ```typescript
@@ -130,7 +132,11 @@ const tool = new ReadFileTool(ws);
 
 // Single file
 const [result] = await tool.execute({ paths: ['src/index.ts'] });
-// result: "--- /my/project/src/index.ts (lines 1-42 of 42) ---\n...content..."
+// result: "--- /my/project/src/index.ts (lines 1-42 of 42, 1300 chars) ---\n...content..."
+
+// Truncated read: the header reports the state and how to continue
+const [truncated] = await tool.execute({ paths: ['notes.txt'], max_chars: 20 });
+// truncated: "--- /my/project/notes.txt (lines 1-1 of 5, 24 chars — TRUNCATED: showing first 4 chars; continue with start_line=2) ---\n... [truncated]"
 
 // Batch read, each file is a separate result
 const results = await tool.execute({ paths: ['src/main.ts', 'src/utils.ts'] });
@@ -266,7 +272,7 @@ Searches for files and directories by name, content pattern, and/or creation/mod
 | `modified_after` | string | no | ISO 8601 datetime, files modified after this time |
 | `modified_before` | string | no | ISO 8601 datetime, files modified before this time |
 
-**Returns:** One entry per line. File content matches show `path:line: content`; name-only matches show `path`; directory matches show `path/`. When timestamp filters are active, each result appends `(created: ..., modified: ...)`. Binary files and skipped directories are silently excluded. Search has a configurable timeout; partial results are returned if exceeded.
+**Returns:** One entry per line. File content matches show `path:line: content`; name-only matches show `path`; directory matches show `path/`. When timestamp filters are active, each result appends `(created: ..., modified: ...)`. Binary files and skipped directories are silently excluded. Search has a configurable timeout; partial results are returned if exceeded. When the number of matches exceeds `maxDisplayEntries`, a count summary (`Searched N entries, found M matches`) is returned instead of the individual lines.
 
 If `path` does not exist or points at a file, the tool returns an error (`ResultStatus.Error`) with actionable guidance - suggesting `read_file` for file contents or the containing directory to search - instead of returning empty results.
 

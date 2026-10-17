@@ -7,7 +7,7 @@ export class SearchConfiguration {
     maxSearchResults: number;
 
     /**
-     * Threshold above which results are returned as a count summary instead of individual paths.
+     * Threshold above which matches are returned as a count summary instead of the individual lines or paths.
      * Falls back to `LLM_CHAT_FS_MAX_DISPLAY_ENTRIES` or `200`.
      */
     maxDisplayEntries: number;
@@ -63,7 +63,7 @@ export class FileConfiguration {
     /**
      * When `true`, write/edit tools require the file to have been read via `read_file`
      * before modifications are allowed. Falls back to the `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE`
-     * environment variable, or `false` if not set.
+     * environment variable, or `true` if not set.
      */
     requireReadBeforeWrite: boolean;
 

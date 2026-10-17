@@ -72,7 +72,6 @@ suite.add(pkg);
 
 Or register individual tools as needed, see the [API Reference](api-reference.md) for all 13.
 
-## Next steps
+## Full API
 
-- Browse the [API Reference](api-reference.md) for every tool's parameters and return values
-- See [Architecture](architecture.md) for the design behind workspace access control
+See [API Reference](api-reference.md) for every tool's parameters and return values.

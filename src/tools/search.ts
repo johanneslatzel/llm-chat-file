@@ -304,7 +304,7 @@ export class SearchEntriesTool extends Tool {
                 ? `(Warning: could not read ${walkErrors.length} director${walkErrors.length === 1 ? 'y' : 'ies'}, results may be incomplete)\n\n`
                 : '';
 
-        if (visited > this.sc.maxDisplayEntries) {
+        if (results.length > this.sc.maxDisplayEntries) {
             return {
                 result: `${errorWarning}Searched ${visited} entries, found ${results.length} matches`,
                 status: ResultStatus.Success

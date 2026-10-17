@@ -4,6 +4,8 @@
 
 `llm-chat-file` extends the `llm-chat` framework with filesystem tools: file read/write, directory listing, entry search (by name, content, and timestamps), and workspace switching, all scoped to a configured workspace with access control.
 
+![llm-chat-file architecture](assets/llm-chat-file-architecture.svg)
+
 ## Design
 
 ### Workspace
@@ -74,9 +76,3 @@ The `FilePool` class enforces read-before-write safety: write/edit tools reject 
 6. `WriteFileTool` calls `verifyWrite(resolved, true)`, `allowNew` skips the check for ENOENT so creating brand-new files works without a prior read
 7. The feature is enabled by default; set `LLM_CHAT_FS_REQUIRE_READ_BEFORE_WRITE=false` or pass `requireReadBeforeWrite: false` to `FileConfiguration` to disable
 
-## Dependencies
-
-- `@johannes.latzel/llm-chat`: framework providing `Tool`, `ToolParameters`, `ToolParameterProperty`, etc.
-- `@johannes.latzel/llm-chat-workspace`: workspace and access control (`Workspace`, `DirectoryConfiguration`, `SwitchWorkspaceTool`)
-- `async-mutex`: concurrency protection for workspace switching
-- `isbinaryfile`: binary file detection

@@ -92,14 +92,48 @@ describe('ReadFileTool', () => {
         expect(result.result).toMatch(/of 6, 30 chars\)/);
     });
 
-    it('truncates content exceeding max_chars', async () => {
-        createTempFile(tmpDir, 'long.txt', 'x'.repeat(200));
+    it('truncates content exceeding max_chars at a line boundary', async () => {
+        createTempFile(tmpDir, 'long.txt', 'aaaa\nbbbb\ncccc\ndddd\neeee');
         const tool = new ReadFileTool(ws, fc);
-        const [result] = await tool.execute({ paths: ['long.txt'], max_chars: 50 }) as [ToolResult];
+        const [result] = await tool.execute({ paths: ['long.txt'], max_chars: 20 }) as [ToolResult];
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.result).toContain('[truncated]');
-        expect(result.result.length).toBeLessThan(200);
-        expect(result.result).toMatch(/of 1, 200 chars\)/);
+        expect(result.result).toContain('lines 1-1 of 5, 24 chars — TRUNCATED');
+        expect(result.result).toContain('showing first 4 chars');
+        expect(result.result).toContain('continue with start_line=2');
+        expect(result.result).not.toContain('bbbb');
+        expect(result.result).not.toContain('eeee');
+    });
+
+    it('reports mid-line truncation for a single over-long line', async () => {
+        createTempFile(tmpDir, 'oneline.txt', 'x'.repeat(200));
+        const tool = new ReadFileTool(ws, fc);
+        const [result] = await tool.execute({ paths: ['oneline.txt'], max_chars: 50 }) as [ToolResult];
+        expect(result.status).toBe(ResultStatus.Success);
+        expect(result.result).toContain('[truncated]');
+        expect(result.result).toContain('longer than the character limit');
+        expect(result.result).toContain('showing first 34 chars');
+        expect(result.result).toContain('lines 1-1 of 1, 200 chars');
+    });
+
+    it('pages past a truncation with start_line', async () => {
+        createTempFile(tmpDir, 'page.txt', 'aaaa\nbbbb\ncccc\ndddd\neeee');
+        const tool = new ReadFileTool(ws, fc);
+        const [first] = await tool.execute({ paths: ['page.txt'], max_chars: 20 }) as [ToolResult];
+        expect(first.result).toContain('continue with start_line=2');
+        const [second] = await tool.execute({ paths: ['page.txt'], start_line: 2 }) as [ToolResult];
+        expect(second.result).toContain('bbbb');
+        expect(second.result).toContain('eeee');
+        expect(second.result).not.toContain('aaaa');
+    });
+
+    it('caps output at max_chars and only emits the marker for a tiny limit', async () => {
+        createTempFile(tmpDir, 'tiny.txt', 'abcdefghij\nklmnopqrst');
+        const tool = new ReadFileTool(ws, fc);
+        const [capped] = await tool.execute({ paths: ['tiny.txt'], max_chars: 20 }) as [ToolResult];
+        expect(capped.result.slice(capped.result.indexOf('\n') + 1).length).toBeLessThanOrEqual(20);
+        const [floor] = await tool.execute({ paths: ['tiny.txt'], max_chars: 5 }) as [ToolResult];
+        expect(floor.result.slice(floor.result.indexOf('\n') + 1)).toBe('\n... [truncated]');
     });
 });
 
