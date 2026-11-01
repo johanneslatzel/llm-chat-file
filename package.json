@@ -87,7 +87,7 @@
         "lint-staged": "^17.3.0",
         "prettier": "^3.5.3",
         "typescript": "^6.0.3",
-        "vitest": "^4.1.11",
+        "vitest": "^5.0.5",
         "@johannes.latzel/check-line-limits": "^1.0.1",
         "@johannes.latzel/check-mkdocs": "^0.1.0"
     },
