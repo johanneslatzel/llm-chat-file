@@ -78,7 +78,7 @@ export class EntryInfoTool extends Tool {
                     paths: new ToolParameterProperty(
                         'Array of paths to get info for (absolute, or relative to workspace root)',
                         PropertyType.Array
-                    )
+                    ).accepts('path')
                 },
                 ['paths']
             )

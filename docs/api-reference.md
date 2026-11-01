@@ -2,7 +2,7 @@
 
 ## Common patterns
 
-All tools return a `PartialToolResult` with shape:
+`Tool.execute()` returns a `ToolResult[]`; most tools return one entry per input path, URL, or query. Each entry has the shape:
 
 ```typescript
 {
@@ -19,6 +19,13 @@ All path parameters accept paths in two forms:
 |---|---|---|
 | **Relative** | `"."`, `"src/index.ts"` | Resolved against the current workspace root. Use `"."` for the workspace root itself. |
 | **Absolute** | `"/etc/config"`, `"/home/user/file"` | Used as-is (filesystem root, **not** workspace root). |
+
+### Hidden parameter aliases
+
+The array parameters of `read_file`, `delete_file`, `entry_info`,
+`create_folder`, and `replace_file_content` accept `path` as a hidden
+singular alias for `paths`. The alias is normalized before execution and never
+appears in the tool schema.
 
 
 ---
@@ -48,8 +55,8 @@ Controls search limits.
 
 ```typescript
 import { SearchConfiguration } from '@johannes.latzel/llm-chat-file';
-const config = new SearchConfiguration();  // defaults
-const config = new SearchConfiguration(100);  // override maxSearchResults
+const defaults = new SearchConfiguration();
+const limited = new SearchConfiguration(100);  // override maxSearchResults
 ```
 
 | Parameter | Type | Description | Env var | Default |
@@ -71,9 +78,9 @@ Controls maximum characters per file read/write and maximum file size for read o
 
 ```typescript
 import { FileConfiguration } from '@johannes.latzel/llm-chat-file';
-const config = new FileConfiguration();  // defaults
-const config = new FileConfiguration(5000, 1024 * 1024);  // override
-const config = new FileConfiguration(5000, 1024 * 1024, false);  // disable read-before-write
+const defaults = new FileConfiguration();
+const sized = new FileConfiguration(5000, 1024 * 1024);  // override
+const mutable = new FileConfiguration(5000, 1024 * 1024, false);  // disable read-before-write
 ```
 
 ### `FilePool`
@@ -82,8 +89,8 @@ In-memory read-before-write tracker. Ensures write/edit tools have read the file
 
 ```typescript
 import { FilePool, FileConfiguration } from '@johannes.latzel/llm-chat-file';
-const pool = new FilePool(new FileConfiguration(undefined, undefined, true));  // enabled
-const pool = new FilePool(new FileConfiguration(undefined, undefined, false)); // disabled (no-op)
+const enabled = new FilePool(new FileConfiguration(undefined, undefined, true));
+const disabled = new FilePool(new FileConfiguration(undefined, undefined, false));
 ```
 
 **How it works:**
@@ -144,11 +151,11 @@ const results = await tool.execute({ paths: ['src/main.ts', 'src/utils.ts'] });
 // results[1]: "--- /my/project/src/utils.ts (lines 1-8 of 8) ---\n...content..."
 
 // Batch with partial failure, each file has its own status
-const results = await tool.execute({ paths: ['exists.txt', 'missing.txt'] });
-// results[0].status: "success"
-// results[0].result: "--- /my/project/exists.txt (lines 1-5 of 5) ---\n...content..."
-// results[1].status: "error"
-// results[1].result: "File not found: ENOENT: no such file or directory, stat '/my/project/missing.txt'"
+const partialResults = await tool.execute({ paths: ['exists.txt', 'missing.txt'] });
+// partialResults[0].status: "success"
+// partialResults[0].result: "--- /my/project/exists.txt (lines 1-5 of 5) ---\n...content..."
+// partialResults[1].status: "error"
+// partialResults[1].result: "File not found: ENOENT: no such file or directory, stat '/my/project/missing.txt'"
 ```
 
 ---
@@ -166,7 +173,7 @@ Creates a new file or overwrites the entire content of an existing text file. Fo
 
 ```typescript
 const tool = new WriteFileTool(ws);
-const result = await tool.execute({
+const [result] = await tool.execute({
     path: 'notes.txt',
     content: 'Hello, world!',
 });
@@ -188,7 +195,7 @@ Replaces a range of lines in an existing text file with new content (partial edi
 
 ```typescript
 const tool = new ReplaceFileLinesTool(ws);
-const result = await tool.execute({
+const [result] = await tool.execute({
     path: 'src/main.ts',
     content: 'const x = 42;',
     start_line: 10,
@@ -211,7 +218,7 @@ Inserts new text content at a specific line in an existing text file without ove
 
 ```typescript
 const tool = new InsertFileContentTool(ws);
-const result = await tool.execute({
+const [result] = await tool.execute({
     path: 'src/main.ts',
     content: 'import { foo } from "./bar";',
     line: 1,
@@ -223,11 +230,11 @@ const result = await tool.execute({
 
 ## ReplaceFileContentTool (`replace_file_content`)
 
-Replaces an exact substring in an existing text file with new content (partial edit, unlike `write_file` which overwrites the whole file). Uses `replace_all` to replace all occurrences vs only the first. Works like find-and-replace. File must already exist.
+Replaces an exact substring in one or more existing text files with new content (partial edit, unlike `write_file` which overwrites the whole file). Uses `replace_all` to replace all occurrences vs only the first. Works like find-and-replace. Each file must already exist.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | File path (absolute, or relative to workspace root) |
+| `paths` | string[] | yes | Array of file paths to modify (absolute, or relative to workspace root) |
 | `old_content` | string | yes | Exact substring to find (literal match, not a regex) |
 | `new_content` | string | yes | Replacement text (empty string deletes the match) |
 | `replace_all` | boolean | no | Replace all occurrences vs first only. Default `false`. |
@@ -235,21 +242,21 @@ Replaces an exact substring in an existing text file with new content (partial e
 ```typescript
 const tool = new ReplaceFileContentTool(ws);
 // Replace first occurrence
-const result = await tool.execute({
-    path: 'src/main.ts',
+const first = await tool.execute({
+    paths: ['src/main.ts'],
     old_content: 'foo',
     new_content: 'bar',
 });
-// "Replaced content in /my/project/src/main.ts"
+// first[0].result: "Replaced 1 occurrence in /my/project/src/main.ts"
 
 // Replace all occurrences
-const result = await tool.execute({
-    path: 'src/main.ts',
+const all = await tool.execute({
+    paths: ['src/main.ts'],
     old_content: 'foo',
     new_content: 'bar',
     replace_all: true,
 });
-// "Replaced content in /my/project/src/main.ts"
+// all[0].result: "Replaced 2 occurrences in /my/project/src/main.ts"
 ```
 
 ---
@@ -280,23 +287,23 @@ If `path` does not exist or points at a file, the tool returns an error (`Result
 const tool = new SearchEntriesTool(ws);
 
 // Search by name and content (AND logic)
-const result = await tool.execute({ name_pattern: '\\.ts$', content_pattern: 'TODO' });
+const [byNameAndContent] = await tool.execute({ name_pattern: '\\.ts$', content_pattern: 'TODO' });
 // "src/main.ts:10:   // TODO: implement this\nsrc/utils.ts:42:   // TODO: add error handling"
 
 // Search by name only
-const result = await tool.execute({ name_pattern: '\\.ts$' });
+const [byName] = await tool.execute({ name_pattern: '\\.ts$' });
 // "src/main.ts\nsrc/utils.ts"
 
 // Search by content only
-const result = await tool.execute({ content_pattern: 'FIXME' });
+const [byContent] = await tool.execute({ content_pattern: 'FIXME' });
 // "src/main.ts:10:   // FIXME: this is broken"
 
 // Filter by modification time
-const result = await tool.execute({ modified_after: '2025-01-01T00:00:00.000Z' });
+const [byModified] = await tool.execute({ modified_after: '2025-01-01T00:00:00.000Z' });
 // "src/main.ts  (created: 2025-01-15T10:00:00.000Z, modified: 2025-03-20T14:30:00.000Z)"
 
 // List everything in the workspace
-const result = await tool.execute({});
+const [all] = await tool.execute({});
 // "readme.txt\ndocs/\nsrc/\nsrc/main.ts\n..."
 ```
 
@@ -315,7 +322,7 @@ Lists files and directories in a path. Directories are suffixed with `/`.
 
 ```typescript
 const tool = new ListDirectoryTool(ws);
-const result = await tool.execute({ path: '.' });
+const [result] = await tool.execute({ path: '.' });
 // "file1.txt\nfile2.txt\nsubdir/"
 ```
 
@@ -333,7 +340,7 @@ Creates directories and any necessary parent directories.
 
 ```typescript
 const tool = new CreateFolderTool(ws);
-const result = await tool.execute({ paths: ['src/components'] });
+const [result] = await tool.execute({ paths: ['src/components'] });
 // "Created directory: /my/project/src/components/"
 ```
 
@@ -379,7 +386,7 @@ Moves or renames a file or directory.
 
 ```typescript
 const tool = new MoveFileTool(ws);
-const result = await tool.execute({
+const [result] = await tool.execute({
     source: 'old-name.txt',
     destination: 'new-name.txt',
 });
@@ -398,7 +405,7 @@ No parameters required.
 
 ```typescript
 const tool = new FileAccessInfoTool(ws, new FileConfiguration());
-const result = await tool.execute({});
+const [result] = await tool.execute({});
 // "Configured file system access:
 //   /home/user/project                                       write  (current workspace)
 //   /var/log                                                  read
@@ -419,7 +426,7 @@ Returns metadata about one or more filesystem entries (files, directories, symli
 
 ```typescript
 const tool = new EntryInfoTool(ws);
-const result = await tool.execute({ paths: ['src/index.ts'] });
+const [result] = await tool.execute({ paths: ['src/index.ts'] });
 // "Path: /home/user/project/src/index.ts
 //  Type: file
 //  Size: 1240 bytes
@@ -444,7 +451,7 @@ Changes the current workspace path to a new directory within configured accessib
 
 ```typescript
 const tool = new SwitchWorkspaceTool(ws);
-const result = await tool.execute({ path: '/another/project' });
+const [result] = await tool.execute({ path: '/another/project' });
 // "Switched workspace to: /another/project"
 ```
 

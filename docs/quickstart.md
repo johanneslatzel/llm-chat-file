@@ -8,7 +8,7 @@ npm install @johannes.latzel/llm-chat-file
 
 ## Configure and explore
 
-Set up your workspace with read and write directories via environment variables, then list what's available:
+Configure the workspace with read and write directories via environment variables, then list what is available:
 
 ```typescript
 import { Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-workspace';
@@ -17,7 +17,7 @@ import { FileAccessInfoTool, FileConfiguration } from '@johannes.latzel/llm-chat
 const ws = new Workspace(new DirectoryConfiguration());
 const tool = new FileAccessInfoTool(ws, new FileConfiguration());
 
-const result = await tool.execute({});
+const [result] = await tool.execute({});
 console.log(result.result);
 // "Configured file system access:
 //   /home/user/project                                       write  (current workspace)
@@ -36,7 +36,7 @@ const read = new ReadFileTool(ws);
 const write = new WriteFileTool(ws);
 
 await write.execute({ path: 'notes.txt', content: 'Hello from llm-chat-file!' });
-const result = await read.execute({ paths: ['notes.txt'] });
+const [result] = await read.execute({ paths: ['notes.txt'] });
 console.log(result.result);
 ```
 
@@ -48,7 +48,7 @@ Find `.ts` files containing "TODO", or search by name, content, and timestamps i
 import { SearchEntriesTool } from '@johannes.latzel/llm-chat-file';
 
 const search = new SearchEntriesTool(ws);
-const result = await search.execute({ name_pattern: '\\.ts$', content_pattern: 'TODO' });
+const [result] = await search.execute({ name_pattern: '\\.ts$', content_pattern: 'TODO' });
 console.log(result.result);
 // "src/main.ts:10:   // TODO: implement this"
 ```

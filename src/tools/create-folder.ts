@@ -26,7 +26,7 @@ export class CreateFolderTool extends Tool {
                     paths: new ToolParameterProperty(
                         'Array of directory paths to create',
                         PropertyType.Array
-                    )
+                    ).accepts('path')
                 },
                 ['paths']
             )

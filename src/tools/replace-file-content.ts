@@ -42,7 +42,7 @@ export class ReplaceFileContentTool extends Tool {
                     paths: new ToolParameterProperty(
                         'Array of file paths to apply the replacement to',
                         PropertyType.Array
-                    ),
+                    ).accepts('path'),
                     old_content: new ToolParameterProperty(
                         'Exact substring to find (literal match, not a regex)'
                     ),
