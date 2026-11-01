@@ -36,7 +36,7 @@ export class ReadFileTool extends Tool {
                     paths: new ToolParameterProperty(
                         'Array of file paths to read (absolute, or relative to workspace root)',
                         PropertyType.Array
-                    ),
+                    ).accepts('path'),
                     max_chars: new ToolParameterProperty(
                         'Maximum number of characters to return (default: config max)',
                         PropertyType.Integer

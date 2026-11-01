@@ -13,7 +13,7 @@
 
 Access-controlled filesystem tools for LLM agents. Works with [`@johannes.latzel/llm-chat`](https://github.com/johanneslatzel/llm-chat).
 
-![llm-chat-file architecture](docs/assets/llm-chat-file-architecture.svg)
+![llm-chat-file architecture](https://raw.githubusercontent.com/johanneslatzel/llm-chat-file/main/docs/assets/llm-chat-file-architecture.svg)
 
 Workspace access control is provided by the [`@johannes.latzel/llm-chat-workspace`](https://github.com/johanneslatzel/llm-chat-workspace) package - `Workspace`, `DirectoryConfiguration`, `AccessType`, and `SwitchWorkspaceTool` (see its [documentation](https://johanneslatzel.github.io/llm-chat-workspace/)).
 
@@ -26,7 +26,7 @@ Workspace access control is provided by the [`@johannes.latzel/llm-chat-workspac
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22
 
 ## Installation
 

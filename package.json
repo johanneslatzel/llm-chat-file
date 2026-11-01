@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-file",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "description": "Filesystem tools for the llm-chat package",
     "license": "MIT",
     "sideEffects": false,
@@ -30,7 +30,7 @@
         "write"
     ],
     "engines": {
-        "node": ">=18"
+        "node": ">=22"
     },
     "type": "module",
     "main": "./dist/index.js",
@@ -69,7 +69,7 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.8.0",
+        "@johannes.latzel/llm-chat": "^0.10.0",
         "@johannes.latzel/llm-chat-workspace": "^0.2.0",
         "async-mutex": "^0.5.0",
         "isbinaryfile": "^6.0.0"
@@ -92,6 +92,6 @@
         "@johannes.latzel/check-mkdocs": "^0.1.0"
     },
     "overrides": {
-        "@johannes.latzel/llm-chat": "^0.8.0"
+        "@johannes.latzel/llm-chat": "^0.10.0"
     }
 }

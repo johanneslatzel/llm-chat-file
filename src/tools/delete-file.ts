@@ -31,7 +31,7 @@ export class DeleteFileTool extends Tool {
                     paths: new ToolParameterProperty(
                         'Array of file or directory paths to delete',
                         PropertyType.Array
-                    ),
+                    ).accepts('path'),
                     recursive: new ToolParameterProperty(
                         'Delete directories and their contents recursively',
                         PropertyType.Boolean
