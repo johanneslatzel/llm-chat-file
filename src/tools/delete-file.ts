@@ -6,7 +6,7 @@ import {
     Tool,
     ToolParameterProperty,
     ToolParameters
-} from '@johannes.latzel/llm-chat';
+} from '@johannes.latzel/llm-chat-tool';
 import * as fsp from 'node:fs/promises';
 import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 

@@ -1,4 +1,9 @@
-import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes.latzel/llm-chat';
+import {
+    PartialToolResult,
+    ResultStatus,
+    Tool,
+    ToolParameters
+} from '@johannes.latzel/llm-chat-tool';
 import type { Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { FileConfiguration } from '../lib/config.js';
 

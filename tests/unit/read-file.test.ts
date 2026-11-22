@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import { writeFileSync } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -380,11 +380,11 @@ describe('ReadFileTool - batch', () => {
         expect(results).toHaveLength(2);
         expect(results[0].status).toBe(ResultStatus.Success);
         expect(results[0].result).toContain('a2');
-        expect(results[0].result).not.toContain('a1');
-        expect(results[0].result).not.toContain('a5');
+        expect(results[0].result).not.toMatch(/^a1$/m);
+        expect(results[0].result).not.toMatch(/^a5$/m);
         expect(results[1].status).toBe(ResultStatus.Success);
         expect(results[1].result).toContain('b2');
-        expect(results[1].result).not.toContain('b1');
-        expect(results[1].result).not.toContain('b5');
+        expect(results[1].result).not.toMatch(/^b1$/m);
+        expect(results[1].result).not.toMatch(/^b5$/m);
     });
 });

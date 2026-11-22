@@ -459,17 +459,18 @@ const [result] = await tool.execute({ path: '/another/project' });
 
 ## FileToolPackage
 
-Bundles all 13 file tools into a single package for easy registration with `ToolSuite.add()`. Provides a tutorial with path-resolution guidance.
+Bundles all 13 file tools into a single package for easy registration with `service.tools().add()`. Provides a tutorial with path-resolution guidance.
 
 ```typescript
 import { FileToolPackage } from '@johannes.latzel/llm-chat-file';
+import { OpenAIChatService } from '@johannes.latzel/llm-chat-openai';
 import { Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-workspace';
-import { ToolSuite } from '@johannes.latzel/llm-chat';
 
 const ws = new Workspace(new DirectoryConfiguration());
 const pkg = new FileToolPackage(ws);
-const suite = new ToolSuite();
-suite.add(pkg);
+
+const service = OpenAIChatService.builder().create();
+service.tools().add(pkg);
 ```
 
 | Constructor param | Type | Required | Description |

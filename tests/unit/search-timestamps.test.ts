@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as fsp from 'node:fs/promises';

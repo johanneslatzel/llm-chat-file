@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 import {
     CreateFolderTool,
     DeleteFileTool,
@@ -43,7 +43,7 @@ describe('hidden path aliases', () => {
 
     it('does not expose path in the five tool schemas', () => {
         for (const tool of tools()) {
-            const parameters = tool.toOpenAI().function.parameters as {
+            const parameters = tool.definition().parameters as {
                 properties: Record<string, unknown>;
                 required?: string[];
             };

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import * as fsp from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -38,7 +38,7 @@ describe('DeleteFileTool', () => {
 
     it('declares recursive as boolean in its input schema', () => {
         const tool = new DeleteFileTool(ws);
-        const parameters = tool.toOpenAI().function.parameters as unknown as {
+        const parameters = tool.definition().parameters as unknown as {
             properties: Record<string, { type: string }>;
         };
         expect(parameters.properties.recursive.type).toBe('boolean');

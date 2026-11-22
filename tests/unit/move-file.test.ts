@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MoveFileTool } from '../../src/index.js';

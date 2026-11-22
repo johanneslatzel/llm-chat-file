@@ -1,5 +1,5 @@
 import { Mutex } from 'async-mutex';
-import { ResultStatus, type PartialToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type PartialToolResult } from '@johannes.latzel/llm-chat-tool';
 import * as fsp from 'node:fs/promises';
 import { FileConfiguration } from './config.js';
 

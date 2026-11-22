@@ -58,16 +58,16 @@ console.log(result.result);
 Use `FileToolPackage` to bundle all 13 tools at once, including subfile editing tools (`replace_file_lines`, `insert_file_content`, `replace_file_content`):
 
 ```typescript
-import { ToolSuite } from '@johannes.latzel/llm-chat';
 import { FileToolPackage } from '@johannes.latzel/llm-chat-file';
+import { OpenAIChatService } from '@johannes.latzel/llm-chat-openai';
 import { Workspace, DirectoryConfiguration } from '@johannes.latzel/llm-chat-workspace';
 
 const ws = new Workspace(new DirectoryConfiguration());
 const pkg = new FileToolPackage(ws);
-const suite = new ToolSuite();
-suite.add(pkg);
 
-// Pass suite.tools() to a ChatService constructor
+// Any ChatService implementation works; this example uses the OpenAI provider.
+const service = OpenAIChatService.builder().create();
+service.tools().add(pkg);
 ```
 
 Or register individual tools as needed, see the [API Reference](api-reference.md) for all 13.

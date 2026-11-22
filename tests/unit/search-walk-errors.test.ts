@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import path from 'node:path';
 import { SearchEntriesTool } from '../../src/index.js';
 import { SearchConfiguration } from '../../src/lib/config.js';

@@ -1,4 +1,4 @@
-import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat';
+import { ResultStatus, type ToolResult } from '@johannes.latzel/llm-chat-tool';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FileToolPackage } from '../../src/index.js';
 import { FileConfiguration } from '../../src/lib/config.js';

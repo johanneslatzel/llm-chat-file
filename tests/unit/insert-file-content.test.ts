@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import { InsertFileContentTool } from '../../src/index.js';

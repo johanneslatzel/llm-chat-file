@@ -1,4 +1,4 @@
-import { ToolPackage } from '@johannes.latzel/llm-chat';
+import { ToolPackage } from '@johannes.latzel/llm-chat-tool';
 import { SwitchWorkspaceTool, Workspace } from '@johannes.latzel/llm-chat-workspace';
 import { SearchConfiguration, FileConfiguration } from '../lib/config.js';
 import { FilePool } from '../lib/file-pool.js';
